@@ -20,6 +20,7 @@
     <button class="quick-nav-button" data-open-drawer="nest" title="尸巢"><span>⌂</span><small>尸巢</small></button>
     <button class="quick-nav-button" data-open-drawer="loot" title="器官"><span>✧</span><small>器官</small></button>
     <button class="quick-nav-button" data-open-drawer="log" title="记录"><span>≡</span><small>记录</small></button>
+    <button class="quick-nav-button" data-open-drawer="shelter" title="避难所"><span>✚</span><small>避难所</small></button>
     <button class="quick-nav-button" data-open-drawer="settings" title="设置"><span>⚙</span><small>设置</small></button>
   </nav>
   <div class="topright">
@@ -58,7 +59,8 @@
         <span class="hud-chip"><i class="hud-dot zombie-dot"></i><b id="zombie-count">0</b> 尸群单位</span>
         <span class="hud-chip warning-chip"><i class="hud-dot alert-dot"></i><b id="alert-level">低</b> 警戒</span>
       </div>
-      <div class="canvas-hint" id="canvas-hint">选择下方单位，再点击街区投放尸群</div>
+      <div class="camera-controls"><button id="zoom-out" aria-label="缩小">−</button><span id="zoom-level">100%</span><button id="zoom-in" aria-label="放大">+</button><button id="zoom-reset" aria-label="重置视角">定位</button></div>
+      <div class="canvas-hint" id="canvas-hint">滚轮缩放地图，按住空白处拖动查看；点击街区部署尸群</div>
       <div class="battle-overlay" id="battle-overlay">
         <div class="overlay-card">
           <span class="overlay-symbol" id="overlay-symbol">☣</span>
@@ -126,6 +128,7 @@
     <button class="drawer-tab" data-drawer-tab="nest">尸巢</button>
     <button class="drawer-tab" data-drawer-tab="loot">器官</button>
     <button class="drawer-tab" data-drawer-tab="log">记录</button>
+    <button class="drawer-tab" data-drawer-tab="shelter">避难所</button>
     <button class="drawer-tab" data-drawer-tab="settings">设置</button>
   </nav>
   <section class="panel campaign-panel" data-drawer-view="campaign">
@@ -178,6 +181,8 @@
     <div class="side-heading"><div><span class="eyebrow">FIELD LOG</span><h2>尸巢记录</h2></div><button id="clear-log" class="text-button">清除</button></div>
     <div id="event-log" class="event-log"><p><i>00:00</i> 休眠巢穴已苏醒，等待首次猎食。</p></div>
   </section>
+
+  <section class="panel shelter-panel" data-drawer-view="shelter"><div class="side-heading"><div><span class="eyebrow">SAFEHOUSE</span><h2>人类避难所</h2></div><span class="shelter-status" id="shelter-status">可用</span></div><p class="side-description">受威胁的平民会尝试进入避难所。尸群必须攻击入口并耗尽耐久，才能迫使幸存者重新暴露。建筑内部禁止投放尸群。</p><div class="shelter-card"><div class="shelter-card-head"><span>结构耐久 / HP</span><strong id="shelter-hp">300 / 300</strong></div><div class="shelter-meter"><i id="shelter-meter"></i></div><div class="shelter-card-stats"><div><small>当前收容</small><strong id="shelter-occupants">0 人</strong></div><div><small>入口规则</small><strong>不可投放</strong></div><div><small>破坏后果</small><strong>幸存者涌出</strong></div></div></div><div class="setting-help"><strong>战术提示</strong><p>避难所会吸引惊慌的人类。不同关卡与难度下，耐久会有所变化。</p></div></section>
 
   <section class="panel settings-panel" data-drawer-view="settings">
     <div class="side-heading"><div><span class="eyebrow">FIELD OPTIONS</span><h2>战场显示设置</h2></div><span class="world-glyph">⚙</span></div>
