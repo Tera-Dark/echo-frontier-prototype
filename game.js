@@ -1,7 +1,8 @@
 (function(){
 "use strict";
 const $=id=>document.getElementById(id);
-const canvas=$("world"),ctx=canvas.getContext("2d");
+const canvas=$("world");let ctx=canvas.getContext("2d");
+let mapCache=null,worldDirty=true;
 let W=760,H=600;const STORE="hunger-protocol-demo-v01";
 const COUNTRIES={
  nz:{name:"新西兰 · 南湾",flag:"🇳🇿",theme:"coast",stages:[
@@ -104,9 +105,10 @@ function resizeWorld(){
   const sx=W/oldW,sy=H/oldH;
   [humans,zombies,particles,floating].forEach(list=>list.forEach(o=>{if(typeof o.x==="number")o.x*=sx;if(typeof o.y==="number")o.y*=sy;}));
  }
- buildings=layoutBuildings();
+ buildings=layoutBuildings();worldDirty=true;mapCache=null;
 }
 function setupMission(showOverlay=true){
+ worldDirty=true;mapCache=null;
  running=false;paused=false;ended=false;endingType="";elapsed=0;missionTime=0;uiClock=0;howlTime=0;howlCd=0;sporeCd=0;pendingSkill="";commandMode=false;neutralized=0;escaped=0;casualties=0;alert=0;particles=[];floating=[];zombies=[];humans=[];spawnId=1;
  const s=activeStage(),d=diff();
  const civilianCount=s.pop+d.pop+(stage?2:0);
@@ -399,7 +401,7 @@ function moveToNext(){
  beginMission();
 }
 function showToastMap(){hideOverlay();running=false;ended=false;paused=false;updateCampaignUI();setupMission(true);}
-function drawWorld(){
+function drawStaticWorld(){
  const c=ctx,s=activeStage(),theme=COUNTRIES[country].theme;
  c.clearRect(0,0,W,H);
  const base=theme==="oldtown"?"#6a7051":"#3c6346",dark=theme==="oldtown"?"#576044":"#2f523a",light=theme==="oldtown"?"#7e805b":"#4d744d";
@@ -459,14 +461,18 @@ function drawWorld(){
   c.fillStyle="#9d3e35";c.beginPath();c.moveTo(e.x-22,e.y-5);c.lineTo(e.x-13,e.y);c.lineTo(e.x-22,e.y+5);c.fill();
   c.font="bold 9px monospace";c.fillStyle="#ffd0aa";c.textAlign="center";c.fillText("EVAC",e.x-6,e.y-16);
  });
- // User ping / ability radius is represented by active pulse particles.
- // Entities
- humans.forEach(drawHuman);
- zombies.forEach(drawZombie);
- particles.forEach(drawParticle);
- floating.forEach(drawFloat);
- // Vignette
+ // A dark vignette is part of the cached map; units remain crisp above it.
  const g=c.createRadialGradient(W/2,H/2,Math.min(W,H)*.22,W/2,H/2,Math.max(W,H)*.72);g.addColorStop(0,"#06100800");g.addColorStop(1,"#0510086b");c.fillStyle=g;c.fillRect(0,0,W,H);
+}
+function drawWorld(){
+ const dpr=Math.min(window.devicePixelRatio||1,2);
+ if(!mapCache||worldDirty||mapCache.width!==canvas.width||mapCache.height!==canvas.height){
+  mapCache=document.createElement("canvas");mapCache.width=canvas.width;mapCache.height=canvas.height;
+  const mainContext=ctx;ctx=mapCache.getContext("2d");ctx.setTransform(dpr,0,0,dpr,0,0);
+  drawStaticWorld();ctx=mainContext;worldDirty=false;
+ }
+ ctx.clearRect(0,0,W,H);ctx.drawImage(mapCache,0,0,W,H);
+ humans.forEach(drawHuman);zombies.forEach(drawZombie);particles.forEach(drawParticle);floating.forEach(drawFloat);
 }
 function drawCar(x,y,color,vertical){
  ctx.save();ctx.translate(x,y);if(vertical)ctx.rotate(Math.PI/2);
@@ -476,9 +482,11 @@ function drawHuman(h){
  if(!h.alive)return;const c=ctx;
  c.save();c.translate(h.x,h.y);c.scale(worldScale(),worldScale());
  if(preferences.teamHighlight){
-  const civilian=h.kind==="civilian";
-  c.save();c.globalAlpha=.92;c.lineWidth=1.6;c.strokeStyle=civilian?"#ffc36c":"#ff655f";c.fillStyle=civilian?"rgba(255,195,108,.13)":"rgba(255,91,91,.15)";
-  c.beginPath();c.ellipse(0,2,civilian?9:12,civilian?8:11,0,0,Math.PI*2);c.fill();c.stroke();c.restore();
+  const civilian=h.kind==="civilian",pulse=.5+.5*Math.sin(missionTime*3.7+(h.seed||0));
+  c.save();c.globalAlpha=.76+pulse*.22;c.lineWidth=1.65+pulse*.85;c.strokeStyle=civilian?"#ffd17b":"#ff716b";c.fillStyle=civilian?"rgba(255,191,89,.07)":"rgba(255,83,83,.08)";c.shadowColor=civilian?"#ffb54f":"#ff514d";c.shadowBlur=4+pulse*7;c.lineJoin="round";c.lineCap="round";c.beginPath();
+  if(civilian){c.moveTo(-4.5,9);c.lineTo(-5,2);c.lineTo(-7,-1);c.lineTo(-4,-3);c.lineTo(-3.8,-6);c.quadraticCurveTo(-3.5,-9.5,0,-9.5);c.quadraticCurveTo(3.8,-9.5,3.8,-6);c.lineTo(4,-3);c.lineTo(7,-1);c.lineTo(5,2);c.lineTo(4.5,9);}
+  else{c.moveTo(-6,10);c.lineTo(-6,-1);c.lineTo(-4.8,-3);c.lineTo(-4.5,-7);c.quadraticCurveTo(0,-10,4.5,-7);c.lineTo(5,-3);c.lineTo(6,-1);c.lineTo(14,1);c.lineTo(14,4);c.lineTo(6,5);c.lineTo(5,10);}
+  c.closePath();c.fill();c.stroke();c.restore();
  }
  if(h.kind==="civilian"){
   c.fillStyle="#18201770";c.beginPath();c.ellipse(1,5,5,3,0,0,Math.PI*2);c.fill();
@@ -498,7 +506,13 @@ function drawHuman(h){
 function drawZombie(z){
  if(!z.alive)return;const c=ctx,s=UNITS[z.type],r=z.type==="brute"?10:z.type==="runner"?6.5:7.5;
  c.save();c.translate(z.x,z.y);c.scale(worldScale(),worldScale());
- if(preferences.teamHighlight){c.save();c.globalAlpha=.94;c.lineWidth=1.7;c.strokeStyle="#a9ee8c";c.fillStyle="rgba(143,226,115,.13)";c.beginPath();c.ellipse(0,2,r+4,r+2,0,0,Math.PI*2);c.fill();c.stroke();c.restore();}
+ if(preferences.teamHighlight){
+  const pulse=.5+.5*Math.sin(missionTime*3.4+(z.seed||0));c.save();c.globalAlpha=.78+pulse*.2;c.lineWidth=1.8+pulse*.9;c.strokeStyle="#b9ff95";c.fillStyle="rgba(132,240,111,.08)";c.shadowColor="#8de969";c.shadowBlur=5+pulse*8;c.lineJoin="round";c.lineCap="round";c.beginPath();
+  if(z.type==="runner"){c.rotate(-.5);c.moveTo(-r*.85,-r*.28);c.lineTo(r*.48,-r*.28);c.lineTo(r*.66,-r*.96);c.lineTo(r*1.42,-r*.96);c.lineTo(r*1.65,r*.12);c.lineTo(r*.56,r*.45);c.lineTo(-r*.65,r*.45);}
+  else if(z.type==="brute"){c.moveTo(-r*1.08,r*.86);c.lineTo(-r*1.08,-r*.35);c.lineTo(-r*.72,-r*.55);c.lineTo(-r*.68,-r*1.3);c.lineTo(r*.68,-r*1.3);c.lineTo(r*.72,-r*.55);c.lineTo(r*1.08,-r*.35);c.lineTo(r*1.08,r*.86);c.lineTo(r*.68,r*1.28);c.lineTo(-r*.68,r*1.28);}
+  else{c.moveTo(-r*.92,r*.95);c.lineTo(-r*.96,r*.08);c.lineTo(-r*1.13,r*.08);c.lineTo(-r*1.13,-r*.16);c.lineTo(-r*.55,-r*.43);c.lineTo(-r*.52,-r*1.12);c.lineTo(r*.52,-r*1.12);c.lineTo(r*.55,-r*.43);c.lineTo(r*1.05,-r*.16);c.lineTo(r*1.05,r*.08);c.lineTo(r*.91,r*.08);c.lineTo(r*.92,r*.95);}
+  c.closePath();c.fill();c.stroke();c.restore();
+ }
  if(z.moveOrder){c.strokeStyle="#d6e997";c.globalAlpha=.6;c.beginPath();c.moveTo(0,0);c.lineTo((z.moveOrder.x-z.x)/worldScale(),(z.moveOrder.y-z.y)/worldScale());c.stroke();c.globalAlpha=1;}
  if(howlTime>0){c.strokeStyle="#d7e68a99";c.beginPath();c.arc(0,0,r+4+Math.sin(z.age*12)*2,0,Math.PI*2);c.stroke();}
  c.fillStyle="#132017a8";c.beginPath();c.ellipse(1,r*.7,r+2,r*.56,0,0,Math.PI*2);c.fill();
