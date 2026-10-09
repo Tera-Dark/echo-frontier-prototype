@@ -325,3 +325,6 @@ body{min-height:0}
 /* Keep mission plaque and battle controls in separate lanes on narrow screens. */
 @media(max-width:760px){.mission-header{width:min(48vw,220px)}.battle-toolbar{max-width:48vw}.battle-state strong{display:none}}
 @media(max-width:370px){.mission-header{width:43vw}.battle-toolbar{max-width:48vw}.battle-state strong{display:none}}
+
+/* Crisp contour glow instead of a selection halo; the light breathes on the silhouette. */
+@media(prefers-reduced-motion:reduce){.battle-overlay,.management-column{transition:none!important}}
