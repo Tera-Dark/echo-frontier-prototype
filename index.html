@@ -19,18 +19,17 @@
     <button class="quick-nav-button active" data-open-drawer="campaign" title="战区"><span>◎</span><small>战区</small></button>
     <button class="quick-nav-button" data-open-drawer="nest" title="尸巢"><span>⌂</span><small>尸巢</small></button>
     <button class="quick-nav-button" data-open-drawer="loot" title="器官"><span>✧</span><small>器官</small></button>
-    <button class="quick-nav-button" data-open-drawer="log" title="记录"><span>≡</span><small>记录</small></button>
-    <button class="quick-nav-button" data-open-drawer="shelter" title="避难所"><span>✚</span><small>避难所</small></button>
+        <button class="quick-nav-button" data-open-drawer="shelter" title="避难所"><span>✚</span><small>避难所</small></button>
     <button class="quick-nav-button" data-open-drawer="settings" title="设置"><span>⚙</span><small>设置</small></button>
   </nav>
   <div class="topright">
     <span class="save-status"><i></i> 本地存档</span>
-    <button class="quiet-button" id="reset-game" title="重置本地演示进度">重置实验</button>
+    <button class="quiet-button" id="reset-game" title="重置本地演示进度">重置</button>
   </div>
 </header>
 
 <section class="resource-strip" aria-label="资源">
-  <div class="resource-cell"><span class="resource-icon energy-icon">ϟ</span><div><small>尸能 <em>ENERGY</em></small><strong id="energy-value">100 <i>/ 100</i></strong><div class="meter"><i id="energy-meter"></i></div></div></div>
+  <div class="resource-cell energy-resource"><span class="resource-icon energy-icon">ϟ</span><div><small>尸能 <em>ENERGY</em></small><strong id="energy-value">100 <i>/ 100</i></strong><div class="meter"><i id="energy-meter"></i></div></div></div>
   <div class="resource-cell"><span class="resource-icon biomass-icon">◈</span><div><small>生物质 <em>BIOMASS</em></small><strong id="biomass-value">80</strong><div class="meter biomass-meter"><i id="biomass-meter"></i></div></div></div>
   <div class="resource-cell"><span class="resource-icon brain-icon">✺</span><div><small>脑髓 <em>BRAINS</em></small><strong id="brains-value">0</strong><div class="meter brain-meter"><i id="brains-meter"></i></div></div></div>
   <div class="resource-cell essence-cell"><span class="resource-icon essence-icon">✧</span><div><small>突变精华 <em>ESSENCE</em></small><strong id="essence-value">0</strong><div class="meter essence-meter"><i id="essence-meter"></i></div></div></div>
@@ -78,13 +77,12 @@
         <div class="objective-track"><i id="objective-meter"></i></div>
         <small id="objective-progress">进度 0 / 16 · 存活人类越少，警戒越高</small>
       </div>
-      <button class="primary-button launch-button" id="launch-button">开始围猎 <span>→</span></button>
     </div>
   </div>
 
   <div class="bottom-dock" id="bottom-dock">
   <section class="deploy-section">
-    <div class="section-heading"><div><span class="eyebrow">01 / DEPLOY</span><h2>部署尸群</h2></div><span class="muted">点选单位，再点击地图</span></div>
+    <div class="section-heading"><div><h2>部署尸群</h2></div><span class="muted">选择单位 → 点击街道</span></div>
     <div class="unit-grid">
       <button class="unit-card selected" data-unit="walker">
         <span class="unit-art walker-art"><i></i><b></b></span><span class="unit-copy"><strong>行尸</strong><small>均衡 · 感染基础</small><em>ϟ 12</em></span><span class="select-indicator">✓</span>
@@ -108,7 +106,7 @@
   </section>
 
   <section class="skill-section">
-    <div class="section-heading"><div><span class="eyebrow">02 / ACTIVE MUTATIONS</span><h2>主动突变</h2></div><span class="muted">消耗脑髓或进入冷却</span></div>
+    <div class="section-heading"><div><h2>主动技能</h2></div><span class="muted">脑髓 / 冷却</span></div>
     <div class="skill-grid">
       <button class="skill-card" id="skill-howl"><span class="skill-glyph howl-glyph">〽</span><span><strong>血腥号令</strong><small>尸群追猎速度提升 6 秒</small></span><em>脑髓 2</em></button>
       <button class="skill-card" id="skill-spore"><span class="skill-glyph spore-glyph">✺</span><span><strong>感染脉冲</strong><small>感染目标周围的人类</small></span><em>脑髓 3</em></button>
