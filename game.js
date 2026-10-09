@@ -4,6 +4,11 @@ const $=id=>document.getElementById(id);
 const canvas=$("world");let ctx=canvas.getContext("2d");
 let mapCache=null,worldDirty=true;
 const SPRITE_CACHE=new Map();
+const SPRITE_OUTLINE_CACHE=new Map();
+const SPRITE_DEFS={
+ human:{frame:96,width:48,height:48,anchorX:.5,anchorY:.5},
+ zombie:{frame:96,width:48,height:48,anchorX:.5,anchorY:.5}
+};
 let navGrid=null;
 const CAMERA_LIMITS={nz:[2.35,2.55,2.7],pt:[2.4,2.65,2.85]};
 const camera={zoom:1,minZoom:1,maxZoom:2.35,x:0,y:0};
@@ -112,6 +117,7 @@ function isBlocked(x,y,pad=0){
  for(const b of buildings){if(x>b.x-pad&&x<b.x+b.w+pad&&y>b.y-pad&&y<b.y+b.h+pad)return true;}return false;
 }
 function isShelterInterior(x,y){const b=shelter.building;return !!b&&x>=b.x&&x<=b.x+b.w&&y>=b.y&&y<=b.y+b.h;}
+function isShelterRestricted(x,y){return isShelterInterior(x,y)||!!shelter.building&&Math.hypot(x-shelter.door.x,y-shelter.door.y)<14;}
 let buildings=[];
 function layoutBuildings(){
  const portrait=W/H<.78,cols=portrait?[.16,.5,.84]:[.12,.37,.63,.88],rows=portrait?[.1,.3,.5,.7,.9]:[.12,.38,.62,.88];
@@ -280,7 +286,7 @@ function spawnAtCanvas(evt){
  if(x<0||x>W||y<0||y>H){toast("这里超出地图边界。");return;}
  if(pendingSkill==="spore"){castSpore(x,y);return;}
  if(commandMode){commandHorde(x,y);return;}
- if(isShelterInterior(x,y)){toast("避难所内部禁止投放尸群。");return;}
+ if(isShelterRestricted(x,y)){toast("避难所与入口区域禁止投放尸群。");return;}
  if(isBlocked(x,y,10)){toast("这里是建筑区，尸群无法从建筑内部投放。");return;}
  if(spawnZombie(selectedUnit,x,y)){toast(UNITS[selectedUnit].name+"已投放");renderUI();}
 }
@@ -592,6 +598,7 @@ function drawStaticWorld(){
   c.fillStyle=shelter.destroyed?"#ff9a7a":"#d8f2b5";c.fillRect(cx-3,cy-8,6,16);c.fillRect(cx-8,cy-3,16,6);
   c.font="bold 9px monospace";c.textAlign="center";c.fillStyle=shelter.destroyed?"#ffb19b":"#e5f5c4";c.fillText(shelter.destroyed?"BREACHED":"SHELTER",cx,b.y-9);
   c.fillStyle="#1c291e";c.fillRect(cx-22,b.y+b.h-4,44,3);c.fillStyle="#b9e88c";c.fillRect(cx-22,b.y+b.h-4,44*shelter.hp/Math.max(1,shelter.maxHp),3);
+  const door=shelter.door;c.fillStyle=shelter.destroyed?"#7e4a3c":"#cce6a2";c.fillRect(door.x-10,door.y-7,20,14);c.strokeStyle="#172318";c.lineWidth=2;c.strokeRect(door.x-10,door.y-7,20,14);c.fillStyle="#243226";c.fillRect(door.x-3,door.y-5,6,10);c.fillStyle=shelter.destroyed?"#ff8b70":"#efffcf";c.font="bold 9px monospace";c.textAlign="center";c.fillText("入口",door.x,door.y+20);
  }
  // Road clutter / emergency vehicles
  drawCar(W*.35,H*.24,theme==="oldtown"?"#ab624d":"#64788b",false);
@@ -631,36 +638,47 @@ function drawCar(x,y,color,vertical){
  ctx.save();ctx.translate(x,y);if(vertical)ctx.rotate(Math.PI/2);
  ctx.fillStyle="#172019";ctx.fillRect(-17,-8,34,16);ctx.fillStyle=color;ctx.fillRect(-14,-7,28,14);ctx.fillStyle="#c6d4b8";ctx.fillRect(-8,-5,11,10);ctx.fillStyle="#283f38";ctx.fillRect(5,-5,7,10);ctx.fillStyle="#e9d29c";ctx.fillRect(-14,-6,2,4);ctx.fillRect(-14,3,2,3);ctx.restore();
 }
-function getSprite(key,painter){
+function getSprite(key,painter,kind="human"){
  if(SPRITE_CACHE.has(key))return SPRITE_CACHE.get(key);
- const image=document.createElement("canvas");image.width=96;image.height=96;
- const g=image.getContext("2d");g.scale(2,2);g.translate(24,24);painter(g);SPRITE_CACHE.set(key,image);return image;
+ const def=SPRITE_DEFS[kind]||SPRITE_DEFS.human,image=document.createElement("canvas");image.width=def.frame;image.height=def.frame;
+ const g=image.getContext("2d");g.setTransform(def.frame/def.width,0,0,def.frame/def.height,def.frame/2,def.frame/2);painter(g);
+ const sprite={key,image,width:def.width,height:def.height,anchorX:def.anchorX,anchorY:def.anchorY};SPRITE_CACHE.set(key,sprite);return sprite;
+}
+function getSpriteOutline(sprite,color){
+ const key=sprite.key+"|"+color;if(SPRITE_OUTLINE_CACHE.has(key))return SPRITE_OUTLINE_CACHE.get(key);
+ const size=sprite.image.width,mask=document.createElement("canvas");mask.width=size;mask.height=size;const m=mask.getContext("2d");m.drawImage(sprite.image,0,0);m.globalCompositeOperation="source-in";m.fillStyle=color;m.fillRect(0,0,size,size);
+ const outline=document.createElement("canvas");outline.width=size;outline.height=size;const o=outline.getContext("2d");
+ o.globalAlpha=.22;for(const [x,y] of [[-5,0],[5,0],[0,-5],[0,5],[-4,-4],[4,-4],[-4,4],[4,4]])o.drawImage(mask,x,y);
+ o.globalAlpha=.9;for(const [x,y] of [[-2,0],[2,0],[0,-2],[0,2],[-2,-2],[2,-2],[-2,2],[2,2]])o.drawImage(mask,x,y);
+ o.globalAlpha=.45;o.drawImage(mask,0,0);o.globalAlpha=1;SPRITE_OUTLINE_CACHE.set(key,outline);return outline;
+}
+function drawAnchoredSprite(c,sprite,x,y,scale,outlineColor,pulse){
+ const w=sprite.width*scale,h=sprite.height*scale,left=x-w*sprite.anchorX,top=y-h*sprite.anchorY;
+ c.save();c.translate(x,y);c.scale(scale,scale);c.fillStyle="#10181080";c.beginPath();c.ellipse(1,5,7,3.2,0,0,Math.PI*2);c.fill();c.restore();
+ c.save();c.globalAlpha=.78+.22*pulse;c.drawImage(getSpriteOutline(sprite,outlineColor),left,top,w,h);c.globalAlpha=1;c.drawImage(sprite.image,left,top,w,h);c.restore();
 }
 function drawHuman(h){
  if(!h.alive||h.sheltered)return;
- const c=ctx,civilian=h.kind==="civilian",pulse=.5+.5*Math.sin(missionTime*3.7+(h.seed||0));
+ const civilian=h.kind==="civilian",pulse=.5+.5*Math.sin(missionTime*3.7+(h.seed||0));
  const key="human:"+h.kind+":"+(civilian&&h.panic?"panic":"calm");
  const sprite=getSprite(key,g=>{
   if(civilian){
-   g.fillStyle="#18201770";g.beginPath();g.ellipse(1,5,5,3,0,0,Math.PI*2);g.fill();
    g.fillStyle=h.panic?"#d8b58b":"#d7c7a0";g.fillRect(-3,-1,7,8);g.fillStyle="#e8d5b0";g.fillRect(-2,-6,5,5);
    g.fillStyle="#3a2e26";g.fillRect(-1,-4,1,1);g.fillRect(1,-4,1,1);
   }else{
-   g.fillStyle="#24262a";g.beginPath();g.ellipse(1,5,7,3,0,0,Math.PI*2);g.fill();
    g.fillStyle=h.kind==="elite"?"#b66c4d":"#71838d";g.fillRect(-5,-1,10,10);
    g.fillStyle=h.kind==="elite"?"#e1a06b":"#b3bdc0";g.fillRect(-4,-7,8,6);
    g.fillStyle="#313e48";g.fillRect(-4,-5,8,2);g.fillStyle="#e6d7a1";g.fillRect(-2,-4,2,1);g.fillRect(2,-4,2,1);
    g.fillStyle="#252e33";g.fillRect(3,1,10,3);g.fillRect(10,0,4,2);
    if(h.kind==="elite"){g.strokeStyle="#ef9c68";g.lineWidth=1.5;g.strokeRect(-7,-9,15,21);}
   }
- });
- c.save();c.translate(h.x,h.y);c.scale(worldScale(),worldScale());c.drawImage(sprite,-24,-24,48,48);
+ },"human");
+ const c=ctx,scale=worldScale();c.save();c.translate(h.x,h.y);c.scale(scale,scale);
  if(preferences.teamHighlight){
-  c.save();c.globalAlpha=.78+pulse*.22;c.lineWidth=1.65+pulse*.85;c.strokeStyle=civilian?"#ffd17b":"#ff716b";c.fillStyle=civilian?"rgba(255,191,89,.07)":"rgba(255,83,83,.08)";c.shadowColor=civilian?"#ffb54f":"#ff514d";c.shadowBlur=4+pulse*7;c.lineJoin="round";c.lineCap="round";c.beginPath();
-  if(civilian){c.moveTo(-4.5,9);c.lineTo(-5,2);c.lineTo(-7,-1);c.lineTo(-4,-3);c.lineTo(-3.8,-6);c.quadraticCurveTo(-3.5,-9.5,0,-9.5);c.quadraticCurveTo(3.8,-9.5,3.8,-6);c.lineTo(4,-3);c.lineTo(7,-1);c.lineTo(5,2);c.lineTo(4.5,9);}
-  else{c.moveTo(-6,10);c.lineTo(-6,-1);c.lineTo(-4.8,-3);c.lineTo(-4.5,-7);c.quadraticCurveTo(0,-10,4.5,-7);c.lineTo(5,-3);c.lineTo(6,-1);c.lineTo(14,1);c.lineTo(14,4);c.lineTo(6,5);c.lineTo(5,10);}
-  c.closePath();c.fill();c.stroke();c.restore();
+  const color=civilian?"#ffc36c":"#ff655f";c.globalAlpha=.8+.2*pulse;c.drawImage(getSpriteOutline(sprite,color),-sprite.width/2,-sprite.height/2,sprite.width,sprite.height);c.globalAlpha=1;
  }
+ c.fillStyle="#16201799";c.beginPath();c.ellipse(1,5,5.5,3,0,0,Math.PI*2);c.fill();
+ c.drawImage(sprite.image,-sprite.width/2,-sprite.height/2,sprite.width,sprite.height);
  if(preferences.healthBars&&h.hp<h.maxHp){c.fillStyle="#161b15";c.fillRect(-8,-14,16,2);c.fillStyle=civilian?"#d7a67a":"#df796b";c.fillRect(-8,-14,16*Math.max(0,h.hp/h.maxHp),2);}
  c.restore();
 }
@@ -668,21 +686,16 @@ function drawZombie(z){
  if(!z.alive)return;
  const c=ctx,s=UNITS[z.type],r=z.type==="brute"?10:z.type==="runner"?6.5:7.5,pulse=.5+.5*Math.sin(missionTime*3.4+(z.seed||0));
  const sprite=getSprite("zombie:"+z.type+":"+(z.hitFlash>0?"hit":"normal"),g=>{
-  g.fillStyle="#132017a8";g.beginPath();g.ellipse(1,r*.7,r+2,r*.56,0,0,Math.PI*2);g.fill();
   g.fillStyle=z.hitFlash>0?"#f2e5b1":s.color;
   if(z.type==="runner"){g.rotate(-.5);g.fillRect(-r*.6,-r*.3,r*1.8,r*.9);g.fillRect(r*.55,-r*.9,r*.8,r*.8);g.fillStyle="#e5ebc8";g.fillRect(r*.8,-r*.6,2,2);}
   else if(z.type==="brute"){g.fillRect(-r,-r*.4,r*2,r*1.65);g.fillRect(-r*.65,-r*1.35,r*1.3,r);g.fillStyle="#596748";g.fillRect(-r*.9,r*.7,r*.65,r*.65);g.fillRect(r*.3,r*.7,r*.65,r*.65);g.fillStyle="#f1d99b";g.fillRect(-r*.4,-r*.95,3,2);g.fillRect(r*.12,-r*.95,3,2);}
   else{g.fillRect(-r*.72,-r*.2,r*1.45,r*1.25);g.fillRect(-r*.52,-r*1.05,r*1.05,r*.95);g.fillStyle="#e5ebc8";g.fillRect(-r*.35,-r*.73,2,2);g.fillRect(r*.12,-r*.73,2,2);g.fillStyle="#587953";g.fillRect(-r*1.05,r*.1,r*.4,r*.8);g.fillRect(r*.65,r*.1,r*.4,r*.65);}
- });
- c.save();c.translate(z.x,z.y);c.scale(worldScale(),worldScale());c.drawImage(sprite,-24,-24,48,48);
- if(preferences.teamHighlight){
-  c.save();c.globalAlpha=.8+pulse*.2;c.lineWidth=1.8+pulse*.9;c.strokeStyle="#b9ff95";c.fillStyle="rgba(132,240,111,.08)";c.shadowColor="#8de969";c.shadowBlur=5+pulse*8;c.lineJoin="round";c.lineCap="round";c.beginPath();
-  if(z.type==="runner"){c.rotate(-.5);c.moveTo(-r*.85,-r*.28);c.lineTo(r*.48,-r*.28);c.lineTo(r*.66,-r*.96);c.lineTo(r*1.42,-r*.96);c.lineTo(r*1.65,r*.12);c.lineTo(r*.56,r*.45);c.lineTo(-r*.65,r*.45);}
-  else if(z.type==="brute"){c.moveTo(-r*1.08,r*.86);c.lineTo(-r*1.08,-r*.35);c.lineTo(-r*.72,-r*.55);c.lineTo(-r*.68,-r*1.3);c.lineTo(r*.68,-r*1.3);c.lineTo(r*.72,-r*.55);c.lineTo(r*1.08,-r*.35);c.lineTo(r*1.08,r*.86);c.lineTo(r*.68,r*1.28);c.lineTo(-r*.68,r*1.28);}
-  else{c.moveTo(-r*.92,r*.95);c.lineTo(-r*.96,r*.08);c.lineTo(-r*1.13,r*.08);c.lineTo(-r*1.13,-r*.16);c.lineTo(-r*.55,-r*.43);c.lineTo(-r*.52,-r*1.12);c.lineTo(r*.52,-r*1.12);c.lineTo(r*.55,-r*.43);c.lineTo(r*1.05,-r*.16);c.lineTo(r*1.05,r*.08);c.lineTo(r*.91,r*.08);c.lineTo(r*.92,r*.95);}
-  c.closePath();c.stroke();c.restore();
- }
- if(z.moveOrder){c.strokeStyle="#d6e997";c.globalAlpha=.6;c.beginPath();c.moveTo(0,0);c.lineTo((z.moveOrder.x-z.x)/worldScale(),(z.moveOrder.y-z.y)/worldScale());c.stroke();c.globalAlpha=1;}
+ },"zombie");
+ const scale=worldScale();c.save();c.translate(z.x,z.y);c.scale(scale,scale);
+ c.fillStyle="#132017a8";c.beginPath();c.ellipse(1,r*.7,r+2,r*.56,0,0,Math.PI*2);c.fill();
+ if(preferences.teamHighlight){c.globalAlpha=.78+.22*pulse;c.drawImage(getSpriteOutline(sprite,"#a9ee8c"),-sprite.width/2,-sprite.height/2,sprite.width,sprite.height);c.globalAlpha=1;}
+ c.drawImage(sprite.image,-sprite.width/2,-sprite.height/2,sprite.width,sprite.height);
+ if(z.moveOrder){c.strokeStyle="#d6e997";c.globalAlpha=.6;c.beginPath();c.moveTo(0,0);c.lineTo((z.moveOrder.x-z.x)/scale,(z.moveOrder.y-z.y)/scale);c.stroke();c.globalAlpha=1;}
  if(howlTime>0){c.strokeStyle="#d7e68a99";c.beginPath();c.arc(0,0,r+4+Math.sin(z.age*12)*2,0,Math.PI*2);c.stroke();}
  if(preferences.healthBars&&z.hp<z.maxHp){c.fillStyle="#172018";c.fillRect(-r,-r-7,r*2,2);c.fillStyle="#8db775";c.fillRect(-r,-r-7,r*2*Math.max(0,z.hp/z.maxHp),2);}
  c.restore();
