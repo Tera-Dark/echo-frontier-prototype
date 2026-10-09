@@ -3,6 +3,12 @@
 const $=id=>document.getElementById(id);
 const canvas=$("world");let ctx=canvas.getContext("2d");
 let mapCache=null,worldDirty=true;
+const SPRITE_CACHE=new Map();
+let navGrid=null;
+const CAMERA_LIMITS={nz:[2.35,2.55,2.7],pt:[2.4,2.65,2.85]};
+const camera={zoom:1,minZoom:1,maxZoom:2.35,x:0,y:0};
+let pointerGesture=null;
+let shelter={kind:"shelter",building:null,door:{x:0,y:0},x:0,y:0,hp:0,maxHp:0,destroyed:false};
 let W=760,H=600;const STORE="hunger-protocol-demo-v01";
 const COUNTRIES={
  nz:{name:"新西兰 · 南湾",flag:"🇳🇿",theme:"coast",stages:[
@@ -47,6 +53,24 @@ const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
 const rnd=(a,b)=>a+Math.random()*(b-a);
 const worldScale=()=>clamp(Math.min(W/760,H/600),.82,1.85);
 function savePreferences(){try{localStorage.setItem(PREFS_KEY,JSON.stringify(preferences));}catch(e){}}
+function cameraLimitsForMap(){return CAMERA_LIMITS[country]?.[stage]||2.4;}
+function clampCamera(){
+ camera.minZoom=1;camera.maxZoom=cameraLimitsForMap();camera.zoom=clamp(camera.zoom,camera.minZoom,camera.maxZoom);
+ const maxX=W*(camera.zoom-1)*.5,maxY=H*(camera.zoom-1)*.5;
+ camera.x=clamp(camera.x,-maxX,maxX);camera.y=clamp(camera.y,-maxY,maxY);
+ const el=$("zoom-level");if(el)el.textContent=Math.round(camera.zoom*100)+"%";
+}
+function resetCamera(){camera.zoom=1;camera.x=0;camera.y=0;clampCamera();}
+function zoomCamera(nextZoom,screenX=W/2,screenY=H/2){
+ const old=camera.zoom,next=clamp(nextZoom,1,cameraLimitsForMap());
+ if(Math.abs(next-old)<.001)return;
+ const wx=(screenX-W/2-camera.x)/old+W/2,wy=(screenY-H/2-camera.y)/old+H/2;
+ camera.x+=(wx-W/2)*(old-next);camera.y+=(wy-H/2)*(old-next);camera.zoom=next;clampCamera();drawWorld();
+}
+function screenToWorld(evt){
+ const rect=canvas.getBoundingClientRect(),sx=evt.clientX-rect.left,sy=evt.clientY-rect.top;
+ return{x:(sx-W/2-camera.x)/camera.zoom+W/2,y:(sy-H/2-camera.y)/camera.zoom+H/2};
+}
 const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 const isEquipped=id=>meta.equipped.includes(id);
 const activeStage=()=>COUNTRIES[country].stages[stage];
@@ -87,12 +111,98 @@ function freeSpotAround(cx,cy,radius,minGap=0){
 function isBlocked(x,y,pad=0){
  for(const b of buildings){if(x>b.x-pad&&x<b.x+b.w+pad&&y>b.y-pad&&y<b.y+b.h+pad)return true;}return false;
 }
+function isShelterInterior(x,y){const b=shelter.building;return !!b&&x>=b.x&&x<=b.x+b.w&&y>=b.y&&y<=b.y+b.h;}
 let buildings=[];
 function layoutBuildings(){
  const portrait=W/H<.78,cols=portrait?[.16,.5,.84]:[.12,.37,.63,.88],rows=portrait?[.1,.3,.5,.7,.9]:[.12,.38,.62,.88];
  const bw=W*(portrait?.19:.155),bh=H*(portrait?.105:.135),out=[];
- rows.forEach((ry,ri)=>cols.forEach((cx,ci)=>out.push({x:cx*W-bw/2,y:ry*H-bh/2,w:bw*rnd(.88,1.08),h:bh*rnd(.9,1.08),t:(ri+ci+stage)%3})));
+ rows.forEach((ry,ri)=>cols.forEach((cx,ci)=>out.push({id:"b"+out.length,x:cx*W-bw/2,y:ry*H-bh/2,w:bw*rnd(.88,1.08),h:bh*rnd(.9,1.08),t:(ri+ci+stage)%3,isShelter:portrait?(ri===2&&ci===1):(ri===1&&ci===1)})));
  return out;
+}
+function syncShelter(reset=false){
+ const building=buildings.find(b=>b.isShelter)||buildings[Math.floor(buildings.length/2)];
+ shelter.building=building||null;if(!building)return;
+ const oldRatio=shelter.maxHp>0?shelter.hp/shelter.maxHp:1,max=300+stage*55+difficulty*45;
+ shelter.maxHp=max;shelter.hp=reset?max:clamp(oldRatio*max,0,max);shelter.destroyed=reset?false:shelter.hp<=0;
+ const candidates=[
+  {x:building.x+building.w*.5,y:building.y+building.h+12},
+  {x:building.x+building.w+12,y:building.y+building.h*.5},
+  {x:building.x+building.w*.5,y:building.y-12},
+  {x:building.x-12,y:building.y+building.h*.5}
+ ];
+ shelter.door=candidates.find(p=>p.x>8&&p.x<W-8&&p.y>24&&p.y<H-20&&!isBlocked(p.x,p.y,4))||candidates[0];
+ shelter.x=shelter.door.x;shelter.y=shelter.door.y;
+}
+const shelteredCount=()=>humans.filter(h=>h.alive&&h.sheltered).length;
+function rebuildNavigation(){
+ const cell=clamp(Math.min(W,H)/22,18,30),cols=Math.ceil(W/cell),rows=Math.ceil(H/cell),blocked=new Uint8Array(cols*rows);
+ for(let y=0;y<rows;y++)for(let x=0;x<cols;x++){
+  const px=Math.min(W-2,x*cell+cell*.5),py=Math.min(H-2,y*cell+cell*.5);
+  blocked[y*cols+x]=isBlocked(px,py,Math.max(3,cell*.23))?1:0;
+ }
+ navGrid={cell,cols,rows,blocked};
+ [humans,zombies].forEach(list=>list.forEach(e=>{e.path=null;e.pathIndex=0;e.pathTimer=0;}));
+}
+function cellAt(x,y){return{cx:clamp(Math.floor(x/navGrid.cell),0,navGrid.cols-1),cy:clamp(Math.floor(y/navGrid.cell),0,navGrid.rows-1)};}
+function nearestWalkableCell(cx,cy){
+ const g=navGrid;
+ for(let r=0;r<10;r++)for(let dy=-r;dy<=r;dy++)for(let dx=-r;dx<=r;dx++){
+  if(Math.abs(dx)+Math.abs(dy)!==r)continue;
+  const x=cx+dx,y=cy+dy;if(x<0||x>=g.cols||y<0||y>=g.rows)continue;
+  if(!g.blocked[y*g.cols+x])return y*g.cols+x;
+ }
+ return -1;
+}
+function heapPush(heap,item){let i=heap.length;heap.push(item);while(i>0){const p=(i-1)>>1;if(heap[p].score<=item.score)break;heap[i]=heap[p];i=p;}heap[i]=item;}
+function heapPop(heap){const root=heap[0],last=heap.pop();if(heap.length){let i=0;while(true){let child=i*2+1;if(child>=heap.length)break;if(child+1<heap.length&&heap[child+1].score<heap[child].score)child++;if(heap[child].score>=last.score)break;heap[i]=heap[child];i=child;}heap[i]=last;}return root;}
+function findPath(sx,sy,tx,ty){
+ if(!navGrid)return[];
+ const g=navGrid,sp=cellAt(sx,sy),gp=cellAt(tx,ty),start=nearestWalkableCell(sp.cx,sp.cy),goal=nearestWalkableCell(gp.cx,gp.cy);
+ if(start<0||goal<0)return[];if(start===goal)return[{x:tx,y:ty}];
+ const n=g.cols*g.rows,cost=new Float32Array(n);cost.fill(Infinity);cost[start]=0;
+ const parent=new Int32Array(n);parent.fill(-1);const closed=new Uint8Array(n),heap=[];
+ const gx=goal%g.cols,gy=Math.floor(goal/g.cols),heur=id=>{const dx=Math.abs(id%g.cols-gx),dy=Math.abs(Math.floor(id/g.cols)-gy);return Math.max(dx,dy)+(Math.SQRT2-1)*Math.min(dx,dy);};
+ heapPush(heap,{id:start,score:heur(start)});
+ const dirs=[[-1,0,1],[1,0,1],[0,-1,1],[0,1,1],[-1,-1,Math.SQRT2],[1,-1,Math.SQRT2],[-1,1,Math.SQRT2],[1,1,Math.SQRT2]];
+ let reached=false,loops=0;
+ while(heap.length&&loops++<n*2){
+  const cur=heapPop(heap).id;if(closed[cur])continue;if(cur===goal){reached=true;break;}closed[cur]=1;
+  const x=cur%g.cols,y=Math.floor(cur/g.cols);
+  for(const [dx,dy,step] of dirs){
+   const nx=x+dx,ny=y+dy;if(nx<0||nx>=g.cols||ny<0||ny>=g.rows)continue;const ni=ny*g.cols+nx;
+   if(g.blocked[ni]||closed[ni])continue;
+   if(dx&&dy&&(g.blocked[y*g.cols+nx]||g.blocked[ny*g.cols+x]))continue;
+   const candidate=cost[cur]+step;if(candidate>=cost[ni])continue;cost[ni]=candidate;parent[ni]=cur;heapPush(heap,{id:ni,score:candidate+heur(ni)});
+  }
+ }
+ if(!reached)return[];
+ const ids=[];for(let id=goal;id!==start&&id>=0;id=parent[id])ids.push(id);ids.reverse();
+ const points=ids.map(id=>({x:Math.min(W-4,(id%g.cols+.5)*g.cell),y:Math.min(H-4,(Math.floor(id/g.cols)+.5)*g.cell)}));
+ const last=points[points.length-1];if(last&&Math.hypot(tx-last.x,ty-last.y)>g.cell*.3&&!segmentBlocked(last.x,last.y,tx,ty))points.push({x:tx,y:ty});
+ return points;
+}
+function segmentBlocked(x1,y1,x2,y2){
+ const distance=Math.hypot(x2-x1,y2-y1),steps=Math.max(2,Math.ceil(distance/(navGrid?navGrid.cell*.35:10)));
+ for(let i=1;i<steps;i++){const t=i/steps;if(isBlocked(x1+(x2-x1)*t,y1+(y2-y1)*t,3))return true;}return false;
+}
+function cameraPointerDown(e){
+ if(e.button!==0&&e.button!==1&&e.button!==2)return;
+ pointerGesture={id:e.pointerId,button:e.button,startX:e.clientX,startY:e.clientY,lastX:e.clientX,lastY:e.clientY,moved:false};
+ try{canvas.setPointerCapture(e.pointerId);}catch(err){}
+}
+function cameraPointerMove(e){
+ const g=pointerGesture;if(!g||g.id!==e.pointerId)return;
+ const dx=e.clientX-g.lastX,dy=e.clientY-g.lastY;g.lastX=e.clientX;g.lastY=e.clientY;
+ if(!g.moved&&Math.hypot(e.clientX-g.startX,e.clientY-g.startY)>5)g.moved=true;
+ if(g.moved){camera.x+=dx;camera.y+=dy;clampCamera();drawWorld();}
+}
+function cameraPointerUp(e){
+ const g=pointerGesture;if(!g||g.id!==e.pointerId)return;pointerGesture=null;
+ try{canvas.releasePointerCapture(e.pointerId);}catch(err){}
+ if(!g.moved&&g.button===0)spawnAtCanvas(e);
+}
+function handleMapWheel(e){
+ e.preventDefault();const rect=canvas.getBoundingClientRect();zoomCamera(camera.zoom*(e.deltaY<0?1.12:1/1.12),e.clientX-rect.left,e.clientY-rect.top);
 }
 function resizeWorld(){
  const oldW=W,oldH=H,rect=canvas.getBoundingClientRect();
@@ -105,10 +215,10 @@ function resizeWorld(){
   const sx=W/oldW,sy=H/oldH;
   [humans,zombies,particles,floating].forEach(list=>list.forEach(o=>{if(typeof o.x==="number")o.x*=sx;if(typeof o.y==="number")o.y*=sy;}));
  }
- buildings=layoutBuildings();worldDirty=true;mapCache=null;
+ buildings=layoutBuildings();syncShelter(false);rebuildNavigation();worldDirty=true;mapCache=null;clampCamera();
 }
 function setupMission(showOverlay=true){
- worldDirty=true;mapCache=null;
+ worldDirty=true;mapCache=null;resetCamera();syncShelter(true);rebuildNavigation();
  running=false;paused=false;ended=false;endingType="";elapsed=0;missionTime=0;uiClock=0;howlTime=0;howlCd=0;sporeCd=0;pendingSkill="";commandMode=false;neutralized=0;escaped=0;casualties=0;alert=0;particles=[];floating=[];zombies=[];humans=[];spawnId=1;
  const s=activeStage(),d=diff();
  const civilianCount=s.pop+d.pop+(stage?2:0);
@@ -117,7 +227,7 @@ function setupMission(showOverlay=true){
  const hotspot={x:W*.5,y:H*.48},spawnRadius=Math.min(W,H)*.29;
  for(let i=0;i<civilianCount;i++){
   const p=freeSpotAround(hotspot.x,hotspot.y,spawnRadius);
-  humans.push({id:"h"+spawnId++,x:p.x,y:p.y,hp:16*d.hp,maxHp:16*d.hp,kind:"civilian",alive:true,speed:rnd(17,22)*d.speed,attackCd:0,panic:false,infected:0,value:1,seed:rnd(0,100)});
+  humans.push({id:"h"+spawnId++,x:p.x,y:p.y,hp:16*d.hp,maxHp:16*d.hp,kind:"civilian",alive:true,sheltered:false,speed:rnd(17,22)*d.speed,attackCd:0,panic:false,infected:0,value:1,seed:rnd(0,100)});
  }
  for(let i=0;i<guardCount;i++){
   const p=freeSpotAround(hotspot.x,hotspot.y,spawnRadius);
@@ -166,9 +276,11 @@ function spawnZombie(type,x,y,free=false){
 }
 function spawnAtCanvas(evt){
  if(!running||paused||ended){toast(ended?"先进入下一场猎食。":"先点击“开始围猎”启动战斗。");return;}
- const rect=canvas.getBoundingClientRect(),x=(evt.clientX-rect.left)/rect.width*W,y=(evt.clientY-rect.top)/rect.height*H;
+ const p=screenToWorld(evt),x=p.x,y=p.y;
+ if(x<0||x>W||y<0||y>H){toast("这里超出地图边界。");return;}
  if(pendingSkill==="spore"){castSpore(x,y);return;}
  if(commandMode){commandHorde(x,y);return;}
+ if(isShelterInterior(x,y)){toast("避难所内部禁止投放尸群。");return;}
  if(isBlocked(x,y,10)){toast("这里是建筑区，尸群无法从建筑内部投放。");return;}
  if(spawnZombie(selectedUnit,x,y)){toast(UNITS[selectedUnit].name+"已投放");renderUI();}
 }
@@ -224,8 +336,21 @@ function castSpore(x,y){
 }
 function nearestTarget(z){
  let found=null,best=Infinity;
- for(const h of humans){if(!h.alive)continue;const d=dist(z,h);if(d<best){best=d;found=h;}}
+ for(const h of humans){if(!h.alive||h.sheltered)continue;const d=dist(z,h);if(d<best){best=d;found=h;}}
+ if(!shelter.destroyed&&shelter.hp>0&&shelteredCount()>0){const d=dist(z,shelter);if(d<best)found=shelter;}
  return found;
+}
+function damageShelter(amount){
+ if(shelter.destroyed||shelter.hp<=0)return;
+ shelter.hp=Math.max(0,shelter.hp-amount);
+ floating.push({x:shelter.x,y:shelter.y-18,text:"-"+Math.round(amount),life:.55,max:.55,color:"#ff9a76"});
+ particles.push({x:shelter.x,y:shelter.y,life:.22,max:.22,type:"hit"});
+ if(shelter.hp<=0){
+  shelter.destroyed=true;
+  for(const h of humans){if(!h.alive||!h.sheltered)continue;h.sheltered=false;const p=freeSpotAround(shelter.x,shelter.y,Math.min(W,H)*.16);h.x=p.x;h.y=p.y;h.panic=true;h.path=null;h.pathTimer=0;}
+  log("人类避难所被尸群攻破！幸存者涌出。");toast("避难所已被攻破，注意涌出的幸存者！");
+ }
+ worldDirty=true;mapCache=null;
 }
 function nearestZombie(h){
  let found=null,best=Infinity;
@@ -233,21 +358,23 @@ function nearestZombie(h){
  return found;
 }
 function moveEntity(e,tx,ty,speed,dt){
- let dx=tx-e.x,dy=ty-e.y,d=Math.hypot(dx,dy)||1;
- if(d<1.5)return;
- dx/=d;dy/=d;
- let nx=e.x+dx*speed*dt,ny=e.y+dy*speed*dt;
- const pad=7*worldScale();
- if(isBlocked(nx,ny,pad)){
-  const options=[
-   {x:e.x-dy*speed*dt*1.3,y:e.y+dx*speed*dt*1.3},
-   {x:e.x+dy*speed*dt*1.3,y:e.y-dx*speed*dt*1.3},
-   {x:e.x+dx*speed*dt*.6,y:e.y+dy*speed*dt*.6}
-  ].filter(p=>!isBlocked(p.x,p.y,7)).sort((a,b)=>Math.hypot(tx-a.x,ty-a.y)-Math.hypot(tx-b.x,ty-b.y));
-  if(options.length){nx=options[0].x;ny=options[0].y;}else return;
+ if(!navGrid)rebuildNavigation();
+ e.pathTimer=(e.pathTimer||0)-dt;
+ const movedTarget=!Number.isFinite(e.pathTargetX)||Math.hypot(tx-e.pathTargetX,ty-e.pathTargetY)>navGrid.cell*1.25;
+ const blocked=segmentBlocked(e.x,e.y,tx,ty);
+ if(!blocked){e.path=null;e.pathIndex=0;e.pathTargetX=tx;e.pathTargetY=ty;}
+ else if(!e.path||e.pathTimer<=0){
+  e.path=findPath(e.x,e.y,tx,ty);e.pathIndex=0;e.pathTargetX=tx;e.pathTargetY=ty;e.pathTimer=movedTarget?.32:.55;
  }
- const edge=9*worldScale();
- e.x=clamp(nx,edge,W-edge);e.y=clamp(ny,25*worldScale(),H-22*worldScale());
+ let target={x:tx,y:ty};
+ if(e.path&&e.path.length){
+  while(e.pathIndex<e.path.length&&Math.hypot(e.path[e.pathIndex].x-e.x,e.path[e.pathIndex].y-e.y)<Math.max(6,navGrid.cell*.23))e.pathIndex++;
+  if(e.pathIndex<e.path.length)target=e.path[e.pathIndex];else e.path=null;
+ }
+ const dx=target.x-e.x,dy=target.y-e.y,d=Math.hypot(dx,dy)||1;if(d<1.5)return;
+ const step=Math.min(d,speed*dt),nx=e.x+dx/d*step,ny=e.y+dy/d*step;
+ if(isBlocked(nx,ny,Math.max(3,4*worldScale()))){e.path=null;e.pathTimer=0;return;}
+ const edge=8*worldScale();e.x=clamp(nx,edge,W-edge);e.y=clamp(ny,24*worldScale(),H-22*worldScale());
 }
 function exits(){return[{x:W-12,y:H*.5,label:"撤离"},{x:W*.5,y:H-12,label:"撤离"},{x:12,y:H*.5,label:"撤离"}];}
 function closestExit(h){let best=exits()[0],bd=Infinity;for(const e of exits()){const d=dist(h,e);if(d<bd){bd=d;best=e;}}return best;}
