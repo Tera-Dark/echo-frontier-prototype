@@ -7,7 +7,12 @@ const SPRITE_CACHE=new Map();
 const SPRITE_OUTLINE_CACHE=new Map();
 const SPRITE_DEFS={
  human:{frame:96,width:48,height:48,anchorX:.5,anchorY:.5},
- zombie:{frame:96,width:48,height:48,anchorX:.5,anchorY:.5}
+ zombie:{frame:96,width:48,height:48,anchorX:.5,anchorY:.5},
+ vehicle:{frame:96,width:48,height:48,anchorX:.5,anchorY:.5}
+};
+const CITY_PALETTES={
+ coast:{ground:"#3c6346",groundDark:"#2f523a",groundLight:"#4d744d",speck:"#b2bd7930",road:"#555c4a",lane:"#b8b18c40",foundation:"#344535",shadow:"#18231a90",roof:"#4c624b",roofEdge:"#293b2d",walls:["#73856a","#6e8a78","#a39b70"],wallLine:"#4b654d",highlight:"#ffffff12",window:"#243b32",windowLight:"#4c5744",door:"#354332",foliage:"#213c2b",foliageLight:"#55764b",shelter:"#293f2d",shelterEdge:"#c0e59b",shelterBar:"#b9e88c",gate:"#df6350",gateLight:"#ffe4bc",gateDark:"#9d3e35",cars:["#64788b","#9d4f45","#c3b58a"]},
+ oldtown:{ground:"#6a7051",groundDark:"#576044",groundLight:"#7e805b",speck:"#c0b68a30",road:"#6c6b59",lane:"#d7c6a240",foundation:"#564d3d",shadow:"#281f1a70",roof:"#744e43",roofEdge:"#54372f",walls:["#b58b65","#ad795b","#c29a70"],wallLine:"#85644b",highlight:"#fff1d012",window:"#62513d",windowLight:"#d9d0a4",door:"#5d4035",foliage:"#3b4a2b",foliageLight:"#718050",shelter:"#493b2a",shelterEdge:"#e5bd7a",shelterBar:"#dfb56e",gate:"#df6350",gateLight:"#ffe4bc",gateDark:"#9d3e35",cars:["#ab624d","#9d4f45","#c3b58a"]}
 };
 let navGrid=null;
 const CAMERA_LIMITS={nz:[2.35,2.55,2.7],pt:[2.4,2.65,2.85]};
@@ -551,77 +556,63 @@ function moveToNext(){
  beginMission();
 }
 function showToastMap(){hideOverlay();running=false;ended=false;paused=false;updateCampaignUI();setupMission(true);}
+function drawBuilding(c,b,i,p){
+ c.save();
+ c.fillStyle=p.shadow;c.fillRect(b.x+4,b.y+6,b.w,b.h);
+ c.fillStyle=p.foundation;c.fillRect(b.x-3,b.y-2,b.w+6,b.h+5);
+ c.fillStyle=p.roofEdge;c.fillRect(b.x-4,b.y-5,b.w+8,8);
+ c.fillStyle=p.roof;c.fillRect(b.x-3,b.y-5,b.w+6,5);
+ c.fillStyle=p.walls[b.t%p.walls.length];c.fillRect(b.x,b.y,b.w,b.h);
+ c.strokeStyle=p.wallLine;c.lineWidth=1;c.strokeRect(b.x+.5,b.y+.5,b.w-1,b.h-1);
+ c.fillStyle=p.highlight;c.fillRect(b.x+4,b.y+5,Math.max(2,b.w-8),2);
+ const cols=Math.max(2,Math.floor(b.w/26)),rows=Math.max(1,Math.floor(b.h/27));
+ const winW=clamp(b.w/(cols*3.8),5,9),gap=(b.w-cols*winW)/(cols+1),winH=clamp(b.h/(rows*3.5),5,8);
+ for(let ix=0;ix<cols;ix++)for(let iy=0;iy<rows;iy++){
+  const wx=b.x+gap+(gap+winW)*ix,wy=b.y+14+iy*((b.h-24)/Math.max(1,rows));
+  c.fillStyle=p.window;c.fillRect(wx,wy,winW,winH);c.fillStyle=p.windowLight;c.fillRect(wx+1,wy+1,Math.max(1,winW-3),Math.max(1,winH-3));
+ }
+ c.fillStyle=p.door;const dw=clamp(b.w*.085,7,12),dh=clamp(b.h*.2,10,17);c.fillRect(b.x+b.w*.5-dw*.5,b.y+b.h-dh,dw,dh);
+ if((i+stage)%4===0){c.fillStyle=p.shelterBar;c.fillRect(b.x+b.w-10,b.y+b.h-7,5,3);}
+ c.restore();
+}
+function drawShelter(c,p){
+ const b=shelter.building;if(!b)return;
+ const cx=b.x+b.w*.5,cy=b.y+b.h*.5;
+ c.save();
+ c.fillStyle=shelter.destroyed?"#62332c":p.shelter;c.fillRect(cx-10,cy-10,20,20);
+ c.strokeStyle=shelter.destroyed?"#e37d68":p.shelterEdge;c.lineWidth=2;c.strokeRect(cx-10,cy-10,20,20);
+ c.fillStyle=shelter.destroyed?"#ff9a7a":"#d8f2b5";c.fillRect(cx-3,cy-8,6,16);c.fillRect(cx-8,cy-3,16,6);
+ c.font="bold 9px monospace";c.textAlign="center";c.fillStyle=shelter.destroyed?"#ffb19b":"#e5f5c4";c.fillText(shelter.destroyed?"BREACHED":"SHELTER",cx,b.y-9);
+ c.fillStyle="#1c291e";c.fillRect(cx-22,b.y+b.h-4,44,3);c.fillStyle=p.shelterBar;c.fillRect(cx-22,b.y+b.h-4,44*shelter.hp/Math.max(1,shelter.maxHp),3);
+ const door=shelter.door;c.fillStyle=shelter.destroyed?"#7e4a3c":p.shelterEdge;c.fillRect(door.x-10,door.y-7,20,14);
+ c.strokeStyle="#172318";c.lineWidth=2;c.strokeRect(door.x-10,door.y-7,20,14);c.fillStyle="#243226";c.fillRect(door.x-3,door.y-5,6,10);
+ c.fillStyle=shelter.destroyed?"#ff8b70":"#efffcf";c.font="bold 9px monospace";c.textAlign="center";c.fillText("入口",door.x,door.y+20);
+ c.restore();
+}
+function drawEvacGate(c,e,p){
+ c.save();c.fillStyle=p.gate;c.fillRect(e.x-10,e.y-11,20,22);c.fillStyle=p.gateLight;c.fillRect(e.x-5,e.y-6,10,12);
+ c.fillStyle=p.gateDark;c.beginPath();c.moveTo(e.x-22,e.y-5);c.lineTo(e.x-13,e.y);c.lineTo(e.x-22,e.y+5);c.fill();
+ c.font="bold 9px monospace";c.fillStyle="#ffd0aa";c.textAlign="center";c.fillText("EVAC",e.x-6,e.y-16);c.restore();
+}
+function drawShrub(c,x,y,size,p){
+ c.save();c.fillStyle=p.foliage;c.beginPath();c.arc(x,y,size,0,Math.PI*2);c.fill();c.fillStyle=p.foliageLight;c.beginPath();c.arc(x-1,y-2,Math.max(2,size*.58),0,Math.PI*2);c.fill();c.restore();
+}
 function drawStaticWorld(){
- const c=ctx,s=activeStage(),theme=COUNTRIES[country].theme;
- c.clearRect(0,0,W,H);
- const base=theme==="oldtown"?"#6a7051":"#3c6346",dark=theme==="oldtown"?"#576044":"#2f523a",light=theme==="oldtown"?"#7e805b":"#4d744d";
- c.fillStyle=base;c.fillRect(0,0,W,H);
- for(let y=0;y<H;y+=30)for(let x=0;x<W;x+=30){
-  const n=((x*17+y*31+stage*7+difficulty*3)%13);
-  c.fillStyle=n<4?dark:n<8?base:light;c.fillRect(x,y,29,29);
-  if(n===2){c.fillStyle="#b2bd7930";c.fillRect(x+4,y+8,4,2);c.fillRect(x+19,y+20,3,3);}
+ const c=ctx,p=CITY_PALETTES[COUNTRIES[country].theme]||CITY_PALETTES.coast;
+ c.clearRect(0,0,W,H);c.fillStyle=p.ground;c.fillRect(0,0,W,H);
+ for(let y=0;y<H;y+=36)for(let x=0;x<W;x+=36){
+  const n=((x*17+y*31+stage*7+difficulty*3)%13);c.fillStyle=n<4?p.groundDark:n<8?p.ground:p.groundLight;c.fillRect(x,y,35,35);
+  if(n===2){c.fillStyle=p.speck;c.fillRect(x+5,y+9,4,2);c.fillRect(x+23,y+24,3,3);}
  }
- // Responsive street grid adapts to portrait and landscape viewports.
- const portrait=W/H<.78;
- const roadH=clamp(H*(portrait?.055:.075),27,54),roadW=clamp(W*(portrait?.075:.055),25,60);
- const roadYs=portrait?[H*.2,H*.4,H*.6,H*.8]:[H*.25,H*.5,H*.75];
- const roadXs=portrait?[W/3,W*2/3]:[W*.25,W*.5,W*.75];
- c.fillStyle=theme==="oldtown"?"#6c6b59":"#555c4a";
- roadYs.forEach(y=>c.fillRect(0,y-roadH/2,W,roadH));
- roadXs.forEach(x=>c.fillRect(x-roadW/2,0,roadW,H));
- c.fillStyle="#b8b18c40";
- roadYs.forEach(y=>{for(let x=4;x<W;x+=42)c.fillRect(x,y-1,20,2);});
- roadXs.forEach(x=>{for(let y=5;y<H;y+=43)c.fillRect(x-1,y,2,20);});
- for(const y of roadYs)for(const x of roadXs){
-  c.fillStyle="#d5cda05b";
-  for(let i=0;i<5;i++){c.fillRect(x-roadW/2+3+i*7,y-roadH/2+3,4,Math.max(8,roadH-6));c.fillRect(x-roadW/2+3,y-roadH/2+3+i*7,Math.max(8,roadW-6),3);}
- }
- // Buildings and yards
- buildings.forEach((b,i)=>{
-  const wall=theme==="oldtown"?["#b58b65","#ad795b","#c29a70"][b.t]:["#73856a","#6e8a78","#a39b70"][b.t];
-  c.fillStyle="#18231a90";c.fillRect(b.x+5,b.y+7,b.w,b.h);
-  c.fillStyle="#344535";c.fillRect(b.x-3,b.y-3,b.w+6,b.h+6);
-  c.fillStyle=wall;c.fillRect(b.x,b.y,b.w,b.h);
-  c.fillStyle=theme==="oldtown"?"#744e43":"#4c624b";c.fillRect(b.x-4,b.y-5,b.w+8,10);
-  c.fillStyle="#ffffff0e";c.fillRect(b.x+4,b.y+5,b.w-8,3);
-  const cols=Math.max(2,Math.floor(b.w/24));
-  for(let ix=0;ix<cols;ix++)for(let iy=0;iy<Math.max(1,Math.floor(b.h/24));iy++){
-   c.fillStyle=theme==="oldtown"?"#d9d0a4":"#243b32";
-   c.fillRect(b.x+8+ix*22,b.y+14+iy*22,8,8);
-   c.fillStyle="#4c5744";c.fillRect(b.x+10+ix*22,b.y+16+iy*22,4,4);
-  }
-  c.fillStyle="#354332";c.fillRect(b.x+b.w*.48,b.y+b.h-14,10,14);
-  if((i+stage)%4===0){c.fillStyle="#c8bd7d";c.fillRect(b.x+b.w-10,b.y+b.h-7,5,3);}
- });
- // The shelter is a distinct safehouse; signage, entrance, and durability share the map origin.
- if(shelter.building){
-  const b=shelter.building,cx=b.x+b.w*.5,cy=b.y+b.h*.5;
-  c.fillStyle=shelter.destroyed?"#62332c":"#293f2d";c.fillRect(cx-10,cy-10,20,20);
-  c.strokeStyle=shelter.destroyed?"#e37d68":"#c0e59b";c.lineWidth=2;c.strokeRect(cx-10,cy-10,20,20);
-  c.fillStyle=shelter.destroyed?"#ff9a7a":"#d8f2b5";c.fillRect(cx-3,cy-8,6,16);c.fillRect(cx-8,cy-3,16,6);
-  c.font="bold 9px monospace";c.textAlign="center";c.fillStyle=shelter.destroyed?"#ffb19b":"#e5f5c4";c.fillText(shelter.destroyed?"BREACHED":"SHELTER",cx,b.y-9);
-  c.fillStyle="#1c291e";c.fillRect(cx-22,b.y+b.h-4,44,3);c.fillStyle="#b9e88c";c.fillRect(cx-22,b.y+b.h-4,44*shelter.hp/Math.max(1,shelter.maxHp),3);
-  const door=shelter.door;c.fillStyle=shelter.destroyed?"#7e4a3c":"#cce6a2";c.fillRect(door.x-10,door.y-7,20,14);c.strokeStyle="#172318";c.lineWidth=2;c.strokeRect(door.x-10,door.y-7,20,14);c.fillStyle="#243226";c.fillRect(door.x-3,door.y-5,6,10);c.fillStyle=shelter.destroyed?"#ff8b70":"#efffcf";c.font="bold 9px monospace";c.textAlign="center";c.fillText("入口",door.x,door.y+20);
- }
- // Road clutter / emergency vehicles
- drawCar(W*.35,H*.24,theme==="oldtown"?"#ab624d":"#64788b",false);
- drawCar(W*.69,H*.58,"#9d4f45",true);
- drawCar(W*.37,H*.83,"#c3b58a",false);
- // Scatter shrubs / fence
- for(let i=0;i<29;i++){
-  const x=(i*137+41+stage*17)%W,y=(i*83+38+country.charCodeAt(0))%H;
-  if(!isBlocked(x,y,4)){
-   c.fillStyle="#213c2b";c.beginPath();c.arc(x,y,4+(i%3),0,Math.PI*2);c.fill();c.fillStyle="#55764b";c.fillRect(x-1,y-3,3,4);
-  }
- }
- // Evac gates
- exits().forEach((e,i)=>{
-  c.fillStyle="#df6350";c.fillRect(e.x-10,e.y-11,20,22);
-  c.fillStyle="#ffe4bc";c.fillRect(e.x-5,e.y-6,10,12);
-  c.fillStyle="#9d3e35";c.beginPath();c.moveTo(e.x-22,e.y-5);c.lineTo(e.x-13,e.y);c.lineTo(e.x-22,e.y+5);c.fill();
-  c.font="bold 9px monospace";c.fillStyle="#ffd0aa";c.textAlign="center";c.fillText("EVAC",e.x-6,e.y-16);
- });
- // A dark vignette is part of the cached map; units remain crisp above it.
+ const portrait=W/H<.78,roadH=clamp(H*(portrait?.055:.075),27,54),roadW=clamp(W*(portrait?.075:.055),25,60);
+ const roadYs=portrait?[H*.2,H*.4,H*.6,H*.8]:[H*.25,H*.5,H*.75],roadXs=portrait?[W/3,W*2/3]:[W*.25,W*.5,W*.75];
+ c.fillStyle=p.road;roadYs.forEach(y=>c.fillRect(0,y-roadH/2,W,roadH));roadXs.forEach(x=>c.fillRect(x-roadW/2,0,roadW,H));
+ c.fillStyle=p.lane;roadYs.forEach(y=>{for(let x=4;x<W;x+=42)c.fillRect(x,y-1,20,2);});roadXs.forEach(x=>{for(let y=5;y<H;y+=43)c.fillRect(x-1,y,2,20);});
+ for(const y of roadYs)for(const x of roadXs){c.fillStyle=p.lane;for(let i=0;i<4;i++){c.fillRect(x-roadW/2+4+i*8,y-roadH/2+4,4,Math.max(6,roadH-8));}}
+ buildings.forEach((b,i)=>drawBuilding(c,b,i,p));drawShelter(c,p);
+ drawCar(W*.35,H*.24,p.cars[0],false);drawCar(W*.69,H*.58,p.cars[1],true);drawCar(W*.37,H*.83,p.cars[2],false);
+ for(let i=0;i<29;i++){const x=(i*137+41+stage*17)%W,y=(i*83+38+country.charCodeAt(0))%H;if(!isBlocked(x,y,4))drawShrub(c,x,y,4+(i%3),p);}
+ exits().forEach(e=>drawEvacGate(c,e,p));
  const g=c.createRadialGradient(W/2,H/2,Math.min(W,H)*.22,W/2,H/2,Math.max(W,H)*.72);g.addColorStop(0,"#06100800");g.addColorStop(1,"#0510086b");c.fillStyle=g;c.fillRect(0,0,W,H);
 }
 function drawWorld(){
@@ -638,8 +629,14 @@ function drawWorld(){
  ctx.restore();
 }
 function drawCar(x,y,color,vertical){
- ctx.save();ctx.translate(x,y);if(vertical)ctx.rotate(Math.PI/2);
- ctx.fillStyle="#172019";ctx.fillRect(-17,-8,34,16);ctx.fillStyle=color;ctx.fillRect(-14,-7,28,14);ctx.fillStyle="#c6d4b8";ctx.fillRect(-8,-5,11,10);ctx.fillStyle="#283f38";ctx.fillRect(5,-5,7,10);ctx.fillStyle="#e9d29c";ctx.fillRect(-14,-6,2,4);ctx.fillRect(-14,3,2,3);ctx.restore();
+ const key="vehicle:"+color+":"+(vertical?"vertical":"horizontal");
+ const sprite=getSprite(key,g=>{
+  if(vertical)g.rotate(Math.PI/2);
+  g.fillStyle="#172019";g.fillRect(-17,-8,34,16);g.fillStyle=color;g.fillRect(-14,-7,28,14);
+  g.fillStyle="#c6d4b8";g.fillRect(-8,-5,11,10);g.fillStyle="#283f38";g.fillRect(5,-5,7,10);
+  g.fillStyle="#e9d29c";g.fillRect(-14,-6,2,4);g.fillRect(-14,3,2,3);
+ },"vehicle");
+ ctx.drawImage(sprite.image,x-24,y-24,48,48);
 }
 function getSprite(key,painter,kind="human"){
  if(SPRITE_CACHE.has(key))return SPRITE_CACHE.get(key);
@@ -856,7 +853,6 @@ $("overlay-action").addEventListener("click",()=>{
  if(ended){setupMission(false);beginMission();return;}
  beginMission();
 });
-$("launch-button").addEventListener("click",()=>{if(ended){if(endingType==="win"&&stage<2){stage++;setupMission(false);beginMission();}else{setupMission(false);beginMission();}}else beginMission();});
 $("pause-button").addEventListener("click",()=>{if(!running||ended)return;paused=!paused;$("pause-button").textContent=paused?"▶ 继续":"Ⅱ 暂停";$("battle-state").textContent=paused?"战斗已暂停":"尸群正在猎食";});
 $("speed-button").addEventListener("click",()=>{speed=speed===1?2:1;$("speed-button").textContent="速度 ×"+speed;});
 $("command-button").addEventListener("click",()=>{
