@@ -321,3 +321,7 @@ body{min-height:0}
 @media(max-width:760px){.command-label{display:none}.command-button{min-width:24px;padding-inline:5px}.battle-toolbar{max-width:46vw}.setting-list{padding-inline:10px}.setting-help{margin-inline:10px}.drawer-tabs{gap:3px}.drawer-tab{padding-inline:2px;font-size:8px}}
 @media(min-width:761px){.battle-footer{bottom:calc(env(safe-area-inset-bottom) + 196px)}.canvas-hint{bottom:calc(env(safe-area-inset-bottom) + 225px)}}
 @media(max-width:370px){.battle-toolbar{max-width:48vw}.quick-nav-button{min-width:26px}}
+
+/* Keep mission plaque and battle controls in separate lanes on narrow screens. */
+@media(max-width:760px){.mission-header{width:min(48vw,220px)}.battle-toolbar{max-width:48vw}.battle-state strong{display:none}}
+@media(max-width:370px){.mission-header{width:43vw}.battle-toolbar{max-width:48vw}.battle-state strong{display:none}}
