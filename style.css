@@ -328,3 +328,34 @@ body{min-height:0}
 
 /* Crisp contour glow instead of a selection halo; the light breathes on the silhouette. */
 @media(prefers-reduced-motion:reduce){.battle-overlay,.management-column{transition:none!important}}
+
+/* Map navigation stays in screen space while the battlefield zooms. */
+#world{touch-action:none;cursor:grab}
+#world:active{cursor:grabbing}
+.camera-controls{position:fixed;z-index:16;top:calc(env(safe-area-inset-top) + 178px);left:12px;display:flex;align-items:center;gap:4px;padding:4px;border:1px solid #62765583;border-radius:9px;background:#0e1713df;backdrop-filter:blur(12px);box-shadow:0 7px 22px #0003}
+.camera-controls button{height:28px;min-width:28px;padding:0 7px;border:1px solid #40553e;border-radius:6px;background:#1b291d;color:#d7e8c0;font-size:13px;font-weight:750}
+.camera-controls span{min-width:39px;text-align:center;color:#bfd4ae;font-size:9px;font-variant-numeric:tabular-nums}
+.camera-controls button:last-child{font-size:9px;font-weight:600}
+.drawer-tabs{grid-template-columns:repeat(6,minmax(0,1fr))}
+.shelter-status{border:1px solid #506942;background:#233422;border-radius:5px;padding:4px 7px;color:#cce6a9;font-size:9px;white-space:nowrap}
+.shelter-status.shelter-damaged{border-color:#9a5143;background:#38211d;color:#ffb49d}
+.shelter-card{margin:0 13px 12px;padding:13px;border:1px solid #43583d;border-radius:10px;background:linear-gradient(145deg,#1a2a1c,#111a14)}
+.shelter-card-head{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:9px;color:#a5b89b}
+.shelter-card-head strong{font-size:15px;color:#d8e9bd;font-variant-numeric:tabular-nums;white-space:nowrap}
+.shelter-meter{height:7px;margin:10px 0 13px;background:#26352a;border:1px solid #384a34;border-radius:7px;overflow:hidden}
+.shelter-meter i{display:block;width:100%;height:100%;background:linear-gradient(90deg,#83bb76,#c7de8a);transition:width .2s}
+.shelter-card-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.shelter-card-stats>div{min-width:0;padding:7px;background:#101812;border:1px solid #2d3e30;border-radius:7px}
+.shelter-card-stats small,.shelter-card-stats strong{display:block}
+.shelter-card-stats small{font-size:8px;color:#879a83}
+.shelter-card-stats strong{font-size:9px;color:#d1e2c6;margin-top:4px;line-height:1.4}
+@media(max-width:760px){
+ .camera-controls{top:calc(env(safe-area-inset-top) + 166px);left:7px;gap:3px;padding:3px;border-radius:7px}
+ .camera-controls button{height:25px;min-width:25px;padding:0 5px;font-size:12px}
+ .camera-controls span{min-width:32px;font-size:8px}
+ .camera-controls button:last-child{font-size:8px}
+ .drawer-tabs{gap:2px}.drawer-tab{font-size:8px;padding:6px 1px}
+ .shelter-card{margin-inline:10px;padding:10px}.shelter-card-stats{gap:4px}.shelter-card-stats strong{font-size:8px}
+ .quick-nav-button[data-open-drawer="shelter"] small{display:none}
+}
+@media(max-width:370px){.quick-nav-button{min-width:25px}.camera-controls{top:calc(env(safe-area-inset-top) + 160px)}.shelter-card-stats{grid-template-columns:1fr}}
