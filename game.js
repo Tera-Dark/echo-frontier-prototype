@@ -241,7 +241,7 @@ function update(dt){
       target.infected=Math.max(0,target.infected-.15);
       floating.push({x:target.x+rnd(-4,4),y:target.y-13,text:"-"+Math.ceil(z.damage),life:.52,max:.52,color:"#f1cf9f"});
       particles.push({x:target.x,y:target.y,life:.23,max:.23,type:"bite"});
-      if(target.hp<=0)killHuman(target,policy);
+      if(target.hp<=0)killHuman(target,"feed");
     }
    }
   }else{
