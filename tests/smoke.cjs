@@ -27,6 +27,7 @@ window.HTMLCanvasElement.prototype.getBoundingClientRect = () => ({
 let queuedFrame = null;
 window.requestAnimationFrame = callback => { queuedFrame = callback; return 1; };
 window.confirm = () => true;
+window.__HUNGER_TEST_MODE__ = true;
 window.eval(source);
 
 const overlay = document.getElementById("battle-overlay");
@@ -37,6 +38,23 @@ assert.match(document.getElementById("battle-state").textContent, /尸群正在�
 assert.equal(document.getElementById("pause-button").disabled, false, "Start must enable pause");
 assert.equal(document.getElementById("zombie-count").textContent, "4", "Start must deploy the starter squad");
 assert.match(document.getElementById("shelter-hp").textContent, /300/, "Shelter durability must initialize");
+const qa = window.__HUNGER_TEST__;
+assert.ok(qa, "Test hooks must be available when explicitly enabled");
+let qaState = qa.state();
+assert.ok(qaState.shelter.building, "A building must be reserved as the shelter");
+const refuge = qaState.shelter.building;
+const routeY = refuge.y + refuge.h / 2;
+const routeStart = { x: refuge.x - 18, y: routeY };
+const routeEnd = { x: refuge.x + refuge.w + 18, y: routeY };
+const route = qa.findPath(routeStart.x, routeStart.y, routeEnd.x, routeEnd.y);
+assert.ok(route.length > 1, "A* must find a route around a blocked building");
+let from = routeStart;
+for (const point of route) {
+  assert.equal(qa.segmentBlocked(from.x, from.y, point.x, point.y), false, "Smoothed route segments must not cross a building");
+  from = point;
+}
+qa.damageShelter(qaState.shelter.maxHp);
+assert.equal(qa.state().shelter.destroyed, true, "Shelter durability must allow the refuge to be breached");
 
 const runFrame = stamp => {
   const callback = queuedFrame;
