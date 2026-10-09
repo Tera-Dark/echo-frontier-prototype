@@ -20,6 +20,20 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+      - name: Validate prototype
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          html = Path("index.html").read_text(encoding="utf-8")
+          scripts = re.findall(r"<script>(.*?)</script>", html, flags=re.S)
+          assert len(scripts) == 1, "Expected exactly one inline game script"
+          Path("/tmp/echo-frontier.js").write_text(scripts[0], encoding="utf-8")
+          assert 'name="viewport"' in html, "Missing responsive viewport metadata"
+          assert "orientation:landscape" in html, "Missing desktop landscape breakpoint"
+          print("HTML contains viewport metadata and mobile/desktop layouts.")
+          PY
+          node --check /tmp/echo-frontier.js
       - name: Configure Pages
         uses: actions/configure-pages@v5
       - name: Upload static site
