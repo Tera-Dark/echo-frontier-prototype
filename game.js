@@ -544,7 +544,7 @@ function drawFloat(p){ctx.save();ctx.globalAlpha=clamp(p.life/p.max,0,1);ctx.tex
 function updateUI(){
  $("energy-value").innerHTML=Math.floor(meta.energy)+' <i>/ '+energyMax()+'</i>';$("energy-meter").style.width=(meta.energy/energyMax()*100)+"%";
  $("biomass-value").textContent=Math.floor(meta.biomass);$("biomass-meter").style.width=(meta.biomass/(meta.biomass+100)*100)+"%";
- $("brains-value").textContent=Math.floor(meta.brains);$("brain-meter").style.width=Math.min(100,meta.brains*8)+"%";
+ $("brains-value").textContent=Math.floor(meta.brains);$("brains-meter").style.width=Math.min(100,meta.brains*8)+"%";
  $("essence-value").textContent=Math.floor(meta.essence);$("essence-meter").style.width=Math.min(100,meta.essence*10)+"%";
  $("human-count").textContent=aliveHumans();$("zombie-count").textContent=aliveZombies();
  $("alert-level").textContent=alert>=3?"极高":alert>=2?"升高":alert>=1?"注意":"低";
