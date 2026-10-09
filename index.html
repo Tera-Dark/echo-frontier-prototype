@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#101716">
+  <meta name="description" content="回响边境：阵地塔防、稀有战利品、遗物构筑与基地成长的可玩网页原型。">
+  <title>回响边境 · Echo Frontier</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <a class="brand" href="#" aria-label="回响边境首页">
+        <span class="brand-mark">E<span>✦</span></span>
+        <span><strong>回响边境</strong><small>ECHO FRONTIER / PROTOTYPE 0.1</small></span></span>
+      </a>
+      <div class="top-actions">
+        <span class="save-state"><i></i>本地存档</span>
+        <button class="icon-button" id="reset-save" title="重置本地存档" aria-label="重置本地存档">↻</button>
+      </div>
+    </header>
+
+    <main class="main-layout">
+      <section class="main-column">
+        <div class="eyebrow"><span class="eyebrow-line"></span> FRONTIER EXPEDITION <span class="eyebrow-line"></span></div>
+        <div class="mission-heading">
+          <div>
+            <div class="chapter-label"><span class="chapter-dot"></span><span id="chapter-kicker">第 01 区域 · 旧城区</span></div>
+            <h1 id="mission-title">失序街区 <span>01</span></h1>
+            <p id="mission-description">回响正在侵蚀旧城区。守住锚点，回收残响。</p>
+          </div>
+          <div class="mission-stamp"><span>战役</span><strong id="mission-stage">01</strong><small>FRONTIER</small></div>
+        </div>
+
+        <div class="combat-strip">
+          <div class="strip-stat"><span>波次</span><strong><b id="wave-number">01</b><small> / 03</small></strong></div>
+          <div class="strip-stat"><span>锚点完整度</span><strong><b id="core-health">100</b><small>%</small></strong></div>
+          <div class="strip-stat"><span>已击退</span><strong><b id="kill-count">0</b><small> 敌人</small></strong></div>
+          <div class="strip-status" id="combat-status"><i></i><span>待命中</span></div>
+        </div>
+
+        <div class="battle-card">
+          <div class="battle-toolbar">
+            <div class="terrain-title"><span class="tiny-icon">⌘</span><div><strong>防线部署区</strong><small>TACTICAL GRID / SECTOR 01</small></div></div>
+            <div class="battle-tools">
+              <button class="small-tool" id="speed-button" title="切换战斗速度">▶ ×1</button>
+              <button class="small-tool" id="pause-button" title="暂停或继续战斗">Ⅱ 暂停</button>
+            </div>
+          </div>
+          <div class="map-legend"><span><i class="legend-path"></i>回响路径</span><span><i class="legend-build"></i>可部署区域</span><span><i class="legend-core"></i>终点锚</span></div>
+          <div class="battlefield-wrap">
+            <div id="battlefield" class="battlefield" role="group" aria-label="塔防网格"></div>
+            <div id="battle-overlay" class="battle-overlay" hidden>
+              <div class="overlay-glyph">✦</div><h2 id="overlay-title">区域已稳定</h2><p id="overlay-copy">战利品已送回终灯站。</p><button class="primary-button" id="overlay-action">继续出征 <span>→</span></button>
+            </div>
+          </div>
+          <div class="battle-footer">
+            <div class="objective"><span class="objective-check" id="objective-check">○</span><div><strong id="objective-title">守住锚点</strong><small id="objective-copy">击退本波敌人，阻止其抵达终点</small></div></div>
+            <button class="primary-button start-button" id="start-wave">开始波次 <span>→</span></button>
+          </div>
+        </div>
+
+        <div class="build-section">
+          <div class="section-heading"><div><span class="section-index">01 / BUILD</span><h2>部署防御设施</h2></div><span class="section-note">选择设施，再点击空地部署</span></div>
+          <div class="build-grid" id="build-shop">
+            <button class="build-card selected" data-build="bolt">
+              <span class="build-glyph glyph-bolt">⌁</span><span class="build-name">脉冲炮</span><span class="build-desc">稳定单体输出</span><span class="build-cost"><b>◆</b> 45</span><span class="build-selected">已选择</span>
+            </button>
+            <button class="build-card" data-build="frost">
+              <span class="build-glyph glyph-frost">❄</span><span class="build-name">霜蚀塔</span><span class="build-desc">减速与控场</span><span class="build-cost"><b>◆</b> 60</span><span class="build-selected">已选择</span>
+            </button>
+            <button class="build-card" data-build="arc">
+              <span class="build-glyph glyph-arc">ϟ</span><span class="build-name">裂弧塔</span><span class="build-desc">电弧连锁伤害</span><span class="build-cost"><b>◆</b> 75</span><span class="build-selected">已选择</span>
+            </button>
+            <button class="build-card" data-build="amplifier">
+              <span class="build-glyph glyph-amp">⌘</span><span class="build-name">共鸣节点</span><span class="build-desc">强化邻近炮塔</span><span class="build-cost"><b>◆</b> 65</span><span class="build-selected">已选择</span>
+            </button>
+          </div>
+          <div class="selection-panel" id="selection-panel">
+            <div class="selection-symbol" id="selection-symbol" {?IX}RENAME?backup"
