@@ -498,14 +498,14 @@ function renderCampaignUI(){
  document.querySelectorAll("[data-stage]").forEach(b=>{
   const index=Number(b.dataset.stage),unlocked=index<=(meta.cleared[country]||0);
   b.classList.toggle("active",index===stage);b.classList.toggle("locked-stage",!unlocked);
-  b.querySelector("i").textContent=index<=(meta.cleared[country]||0)?"已清除":index===stage?"当前":"未解锁";
+  b.querySelector("i").textContent=index===stage?"当前":index<(meta.cleared[country]||0)?"已清除":index>(meta.cleared[country]||0)?"未解锁":"已开放";
   b.disabled=!unlocked||running;
  });
  document.querySelectorAll("[data-difficulty]").forEach(b=>{b.classList.toggle("active",Number(b.dataset.difficulty)===difficulty);b.disabled=running;});
  $("country-select").value=country;$("country-select").disabled=running;
  document.querySelectorAll("[data-unit]").forEach(b=>{
   const u=b.dataset.unit,unlocked=u!=="brute"||meta.upgrades.capacity>0||stage>0;
-  b.classList.toggle("selected",selectedUnit===u);b.classList.toggle("locked-unit",!unlocked);b.disabled=!unlocked||running&&paused===false?false:false;
+  b.classList.toggle("selected",selectedUnit===u);b.classList.toggle("locked-unit",!unlocked);b.disabled=!unlocked;
   b.setAttribute("aria-pressed",selectedUnit===u?"true":"false");
  });
 }
@@ -599,6 +599,6 @@ $("reset-game").addEventListener("click",()=>{
  localStorage.removeItem(STORE);meta=saveDefaults();country="nz";stage=0;difficulty=0;selectedUnit="walker";policy="feed";setupMission(true);$("event-log").innerHTML="";log("巢穴已重置。新的猎食周期开始。");toast("本地存档已重置");
 });
 document.addEventListener("visibilitychange",()=>{if(document.hidden&&running&&!ended){paused=true;$("pause-button").textContent="▶ 继续";updateUI();}});
-document.addEventListener("keydown",e=>{if(e.key==="Escape"&&pendingSkill){pendingSkill="";toast("已取消技能瞄准。";)}});
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&pendingSkill){pendingSkill="";$("canvas-hint").textContent="选择下方单位，再点击地图投放尸群";toast("已取消技能瞄准。");}});
 setupMission(true);renderUI();showHelpHint();requestAnimationFrame(mainLoop);
 })();
