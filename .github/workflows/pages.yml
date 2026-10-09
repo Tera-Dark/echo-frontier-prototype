@@ -20,6 +20,10 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+      - name: Browser interaction smoke test
+        run: |
+          npm install --prefix /tmp/hunger-smoke --no-save --package-lock=false jsdom@26
+          NODE_PATH=/tmp/hunger-smoke/node_modules node tests/smoke.cjs
       - name: Validate prototype
         run: |
           python - <<'PY'
