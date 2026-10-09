@@ -3,49 +3,160 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#101716">
-<meta name="description" content="回响边境：阵地塔防、稀有战利品、遗物构筑与基地成长的可玩网页原型。">
-<title>回响边境 · Echo Frontier</title>
+<meta name="theme-color" content="#101613">
+<meta name="description" content="尸潮纪元：全球猎食 - 以尸群为核心的关卡制增量策略游戏原型。">
+<title>尸潮纪元：全球猎食 · HUNGER PROTOCOL</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<div class="app">
+<div class="app-shell">
 <header class="topbar">
-  <div class="brand"><div class="mark">E✦</div><div><h1>回响边境</h1><p>ECHO FRONTIER / PLAYABLE PROTOTYPE 0.1</p></div></div>
-  <div class="top-actions"><span>● 本地存档</span><button class="button" id="reset">重置</button></div>
+  <a class="brand" href="#" aria-label="尸潮纪元">
+    <span class="brand-mark"><i></i><i></i><i></i></span>
+    <span class="brand-copy"><strong>尸潮纪元</strong><small>HUNGER PROTOCOL <b>DEMO 0.1</b></small></span>
+  </a>
+  <div class="topright">
+    <span class="save-status"><i></i> 本地存档</span>
+    <button class="quiet-button" id="reset-game" title="重置本地演示进度">重置实验</button>
+  </div>
 </header>
-<section class="stats">
-  <div class="stat"><span>战场合金</span><strong id="alloy">160</strong></div>
-  <div class="stat"><span>回响残片</span><strong id="echo">0</strong></div>
-  <div class="stat"><span>研究数据</span><strong id="research">0</strong></div>
-  <div class="stat"><span>锚点完整度</span><strong><i id="core">100</i><small>%</small></strong></div>
+
+<section class="resource-strip" aria-label="资源">
+  <div class="resource-cell"><span class="resource-icon energy-icon">ϟ</span><div><small>尸能 <em>ENERGY</em></small><strong id="energy-value">100 <i>/ 100</i></strong><div class="meter"><i id="energy-meter"></i></div></div></div>
+  <div class="resource-cell"><span class="resource-icon biomass-icon">◈</span><div><small>生物质 <em>BIOMASS</em></small><strong id="biomass-value">80</strong><div class="meter biomass-meter"><i id="biomass-meter"></i></div></div></div>
+  <div class="resource-cell"><span class="resource-icon brain-icon">✺</span><div><small>脑髓 <em>BRAINS</em></small><strong id="brains-value">0</strong><div class="meter brain-meter"><i id="brains-meter"></i></div></div></div>
+  <div class="resource-cell essence-cell"><span class="resource-icon essence-icon">✧</span><div><small>突变精华 <em>ESSENCE</em></small><strong id="essence-value">0</strong><div class="meter essence-meter"><i id="essence-meter"></i></div></div></div>
 </section>
-<main class="layout">
-<section class="main">
-<div class="panel">
- <div class="panel-head"><div><span class="muted tiny" id="chapter">第 01 区域 · 旧城区</span><h2 id="stage-title">失序街区 <span class="muted">01</span></h2></div><div class="battle-meta"><button class="button" id="speed">速度 ×1</button><button class="button" id="pause">暂停</button></div></div>
- <div class="board-wrap"><div id="board" class="board" role="group" aria-label="塔防战场"></div></div>
- <div class="board-legend"><span><i class="dot" style="background:#638c6e"></i>回响路径</span><span><i class="dot" style="background:#a4e2c1"></i>可建造格</span><span><i class="dot" style="background:#e3bd77"></i>锚点</span></div>
- <div class="battle-bottom"><div class="objective"><b id="wave-label">波次 1 / 3</b><span id="status">规划阶段：布置你的防线</span></div><div class="action-row"><button class="button" id="repair">修复 15</button><button class="button primary" id="start">开始波次 →</button></div></div>
-</div>
-<div class="section"><div class="section-head"><div><span class="muted tiny">01 / DEFENSE</span><h2>部署防御设施</h2></div><span class="muted tiny">选塔，再点空格</span></div>
-<div class="build-grid" id="builds">
-<button class="build-card active" data-build="bolt"><span class="glyph">⌁</span><b>脉冲炮</b><small>稳定单体输出</small><span class="cost">◆ 45</span></button>
-<button class="build-card" data-build="frost"><span class="glyph">❄</span><b>霜蚀塔</b><small>减速与控场</small><span class="cost">◆ 60</span></button>
-<button class="build-card" data-build="arc"><span class="glyph">ϟ</span><b>裂弧塔</b><small>弹射连锁伤害</small><span class="cost">◆ 75</span></button>
-<button class="build-card" data-build="node"><span class="glyph">⌘</span><b>共鸣节点</b><small>强化邻近炮塔</small><span class="cost">◆ 65</span></button>
-</div><div id="inspect" class="inspect"><div><strong>脉冲炮 · 标准型</strong><p>射程适中，持续攻击最近的敌人。</p></div><div class="inspect-actions"><button class="button" id="upgrade-tower" disabled>升级炮塔</button><button class="button" id="sell-tower" disabled>拆除</button></div></div></div>
+
+<main class="main-layout">
+<section class="battle-column">
+  <div class="mission-header panel">
+    <div class="mission-title-wrap">
+      <div class="eyebrow"><span class="live-dot"></span><span id="region-label">战区 01 / 新西兰 · 南湾</span><span class="tag">测试关卡</span></div>
+      <h1 id="mission-title">海岸镇：零号街区</h1>
+      <p id="mission-summary">封锁还没有合拢。让感染扩散，在救援抵达前吞噬街区。</p>
+    </div>
+    <div class="mission-mark"><span id="mission-number">01</span><small>HUNT<br>ZONE</small></div>
+  </div>
+
+  <div class="battle-panel panel">
+    <div class="battle-toolbar">
+      <div class="battle-state"><span class="state-led" id="state-led"></span><strong id="battle-state">等待尸群部署</strong><small id="time-label">00:00</small></div>
+      <div class="battle-actions"><button class="mini-button" id="pause-button" disabled>Ⅱ 暂停</button><button class="mini-button" id="speed-button">速度 ×1</button></div>
+    </div>
+    <div class="canvas-wrap" id="canvas-wrap">
+      <canvas id="world" width="760" height="520" aria-label="城市战场，点击地图选择尸群部署位置"></canvas>
+      <div class="world-hud">
+        <span class="hud-chip"><i class="hud-dot human-dot"></i><b id="human-count">24</b> 人类信号</span>
+        <span class="hud-chip"><i class="hud-dot zombie-dot"></i><b id="zombie-count">0</b> 尸群单位</span>
+        <span class="hud-chip warning-chip"><i class="hud-dot alert-dot"></i><b id="alert-level">低</b> 警戒</span>
+      </div>
+      <div class="canvas-hint" id="canvas-hint">选择下方单位，再点击街区投放尸群</div>
+      <div class="battle-overlay" id="battle-overlay">
+        <div class="overlay-card">
+          <span class="overlay-symbol" id="overlay-symbol">☣</span>
+          <p class="eyebrow" id="overlay-kicker">FIRST CONTACT</p>
+          <h2 id="overlay-title">猎食开始</h2>
+          <p id="overlay-copy">在城市封锁前建立第一支尸群。你需要吞噬或感染足够多的人类。</p>
+          <button class="primary-button" id="overlay-action">开始围猎 <span>↗</span></button>
+        </div>
+      </div>
+    </div>
+    <div class="battle-footer">
+      <div class="objective">
+        <span class="eyebrow">本关目标 / OBJECTIVE</span>
+        <strong id="objective-title">吞噬或感染 16 名人类</strong>
+        <div class="objective-track"><i id="objective-meter"></i></div>
+        <small id="objective-progress">进度 0 / 16 · 存活人类越少，警戒越高</small>
+      </div>
+      <button class="primary-button launch-button" id="launch-button">开始围猎 <span>→</span></button>
+    </div>
+  </div>
+
+  <section class="deploy-section">
+    <div class="section-heading"><div><span class="eyebrow">01 / DEPLOY</span><h2>部署尸群</h2></div><span class="muted">点选单位，再点击地图</span></div>
+    <div class="unit-grid">
+      <button class="unit-card selected" data-unit="walker">
+        <span class="unit-art walker-art"><i></i><b></b></span><span class="unit-copy"><strong>行尸</strong><small>均衡 · 感染基础</small><em>ϟ 12</em></span><span class="select-indicator">✓</span>
+      </button>
+      <button class="unit-card" data-unit="runner">
+        <span class="unit-art runner-art"><i></i><b></b></span><span class="unit-copy"><strong>迅猎者</strong><small>高速追击目标</small><em>ϟ 24</em></span><span class="select-indicator">✓</span>
+      </button>
+      <button class="unit-card locked-unit" data-unit="brute">
+        <span class="unit-art brute-art"><i></i><b></b></span><span class="unit-copy"><strong>重尸 <small class="unlock-level">巢穴 Lv.2</small></strong><small>破障 · 高耐久</small><em>ϟ 42</em></span><span class="select-indicator">✓</span>
+      </button>
+    </div>
+    <div class="command-row">
+      <div class="selected-unit-info"><span class="command-glyph">⌖</span><span><strong id="selected-unit-name">行尸部署模式</strong><small id="selected-unit-description">点击地图任意街道，投放一只行尸。单位会自动追猎附近人类。</small></span></div>
+      <div class="capacity"><small>尸群容量</small><strong><span id="current-capacity">0</span><i> / </i><span id="max-capacity">18</span></strong></div>
+    </div>
+  </section>
+
+  <section class="skill-section">
+    <div class="section-heading"><div><span class="eyebrow">02 / ACTIVE MUTATIONS</span><h2>主动突变</h2></div><span class="muted">消耗脑髓或进入冷却</span></div>
+    <div class="skill-grid">
+      <button class="skill-card" id="skill-howl"><span class="skill-glyph howl-glyph">〽</span><span><strong>血腥号令</strong><small>尸群追猎速度提升 6 秒</small></span><em>脑髓 2</em></button>
+      <button class="skill-card" id="skill-spore"><span class="skill-glyph spore-glyph">✺</span><span><strong>感染脉冲</strong><small>感染目标周围的人类</small></span><em>脑髓 3</em></button>
+    </div>
+  </section>
 </section>
-<aside class="side">
-<div class="panel res-panel"><h3>远征储备 <span class="muted tiny">/ FIELD RESOURCES</span></h3><div class="resources"><div class="resource"><span>战场合金</span><b id="alloy2">160</b></div><div class="resource"><span>遗物残片</span><b id="echo2">0</b></div><div class="resource"><span>研究数据</span><b id="research2">0</b></div></div></div>
-<div class="panel"><nav class="tabs"><button class="tab active" data-tab="relics">✧ 遗物</button><button class="tab" data-tab="base">⌂ 基地</button><button class="tab" data-tab="codex">▤ 图鉴</button></nav><div id="side-content" class="side-content"></div></div>
-<div class="panel mission-card"><h3>当前远征目标 <span class="muted">·</span></h3><p id="goal">稳定旧城区三波回响，击败精英敌人并带回第一件战利品。</p><div class="progress"><i id="progress" style="width:0%"></i></div><span class="muted tiny" id="progress-label">区域稳定度 · 0%</span></div>
-<div class="panel log-card"><h3>远征记录</h3><div class="log" id="log"><p>终灯站已上线。等待首次部署。</p></div></div>
+
+<aside class="management-column">
+  <section class="panel campaign-panel">
+    <div class="side-heading"><div><span class="eyebrow">GLOBAL CAMPAIGN</span><h2>全球猎食地图</h2></div><span class="world-glyph">◎</span></div>
+    <div class="country-row">
+      <label for="country-select">当前战区</label><select id="country-select">
+        <option value="nz">🇳🇿 新西兰 · 南湾</option>
+        <option value="pt">🇵🇹 葡萄牙 · 圣维拉</option>
+        <option value="br" disabled>🇧🇷 巴西 · 红土城区（未开放）</option>
+      </select>
+    </div>
+    <div class="stage-picker" id="stage-picker">
+      <button class="stage-node active" data-stage="0"><b>01</b><span>海岸镇</span><i>当前</i></button>
+      <button class="stage-node" data-stage="1"><b>02</b><span>公路检查站</span><i>未清除</i></button>
+      <button class="stage-node locked-stage" data-stage="2"><b>03</b><span>隔离中心</span><i>未解锁</i></button>
+    </div>
+    <div class="difficulty-title"><span class="eyebrow">THREAT LEVEL / 难度</span><span id="difficulty-desc">适合建立基础尸群</span></div>
+    <div class="difficulty-grid">
+      <button class="difficulty-button active" data-difficulty="0"><i>Ⅰ</i><b>游荡</b><small>低威胁</small></button>
+      <button class="difficulty-button" data-difficulty="1"><i>Ⅱ</i><b>失控</b><small>标准战役</small></button>
+      <button class="difficulty-button" data-difficulty="2"><i>Ⅲ</i><b>围猎</b><small>组织反击</small></button>
+      <button class="difficulty-button" data-difficulty="3"><i>Ⅳ</i><b>灭城</b><small>极限挑战</small></button>
+    </div>
+    <div class="difficulty-reward"><span>战利品倍率</span><strong id="reward-multiplier">×1.0</strong><span class="reward-label">仅为原型数值</span></div>
+    <button class="outline-button full-button" id="replay-stage">重置本关战场 ↻</button>
+  </section>
+
+  <section class="panel nest-panel">
+    <div class="side-heading"><div><span class="eyebrow">META PROGRESSION</span><h2>尸巢核心</h2></div><span class="nest-level" id="nest-level">LV. 1</span></div>
+    <p class="side-description">吞噬带来成长，脑髓解锁进化。升级不会随关卡重置。</p>
+    <div class="nest-stats">
+      <div><span>尸群上限</span><b id="nest-capacity">18</b></div>
+      <div><span>能量回复</span><b id="nest-regen">2.0/s</b></div>
+      <div><span>感染倾向</span><b id="nest-infection">20%</b></div>
+    </div>
+    <div class="upgrade-list">
+      <div class="upgrade-row"><span class="upgrade-symbol">⌂</span><div class="upgrade-copy"><strong>扩张巢穴</strong><small>尸群容量 +6</small><em id="capacity-cost">◈ 55</em></div><button class="small-upgrade" id="upgrade-capacity">升级</button></div>
+      <div class="upgrade-row"><span class="upgrade-symbol green-symbol">☣</span><div class="upgrade-copy"><strong>感染腺体</strong><small>感染概率 +10%</small><em id="infection-cost">◈ 70</em></div><button class="small-upgrade" id="upgrade-infection">升级</button></div>
+      <div class="upgrade-row"><span class="upgrade-symbol gold-symbol">ϟ</span><div class="upgrade-copy"><strong>能量腔体</strong><small>尸能上限与回复提升</small><em id="energy-cost">◈ 65</em></div><button class="small-upgrade" id="upgrade-energy">升级</button></div>
+    </div>
+  </section>
+
+  <section class="panel loot-panel">
+    <div class="side-heading"><div><span class="eyebrow">RARE DROPS</span><h2>突变器官</h2></div><span class="loot-count" id="loot-count">0 / 3</span></div>
+    <p class="side-description">精英与高难度关卡掉落。装备器官会改变尸群的行为规则。</p>
+    <div id="organ-list" class="organ-list"></div>
+  </section>
+
+  <section class="panel event-panel">
+    <div class="side-heading"><div><span class="eyebrow">FIELD LOG</span><h2>尸巢记录</h2></div><button id="clear-log" class="text-button">清除</button></div>
+    <div id="event-log" class="event-log"><p><i>00:00</i> 休眠巢穴已苏醒，等待首次猎食。</p></div>
+  </section>
 </aside>
 </main>
-<footer class="footer">回响边境 · ECHO FRONTIER　/　单机网页实验原型 · 进度只保存在当前浏览器</footer>
+<footer class="footer"><span>HUNGER PROTOCOL / EXPERIMENTAL BUILD 0.1</span><span>单机原型 · 进度保存在当前浏览器</span></footer>
 </div>
-<div id="toast" class="toast" aria-live="polite"></div>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
 <script src="game.js"></script>
 </body>
 </html>
