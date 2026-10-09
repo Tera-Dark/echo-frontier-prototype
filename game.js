@@ -2,7 +2,7 @@
 "use strict";
 const $=id=>document.getElementById(id);
 const canvas=$("world"),ctx=canvas.getContext("2d");
-const W=760,H=600,STORE="hunger-protocol-demo-v01";
+let W=760,H=600;const STORE="hunger-protocol-demo-v01";
 const COUNTRIES={
  nz:{name:"新西兰 · 南湾",flag:"🇳🇿",theme:"coast",stages:[
   {title:"海岸镇：零号街区",summary:"封锁还没有合拢。让感染扩散，在救援抵达前吞噬街区。",pop:20,guards:2,goal:.62,bonus:"海湾残响"},
@@ -73,12 +73,26 @@ function freeSpot(minGap=0){
 function isBlocked(x,y,pad=0){
  for(const b of buildings){if(x>b.x-pad&&x<b.x+b.w+pad&&y>b.y-pad&&y<b.y+b.h+pad)return true;}return false;
 }
-const buildings=[
-{x:25,y:30,w:88,h:64,t:0},{x:218,y:27,w:90,h:73,t:1},{x:476,y:23,w:93,h:68,t:2},{x:665,y:42,w:62,h:81,t:0},
-{x:24,y:207,w:88,h:71,t:1},{x:231,y:211,w:84,h:78,t:2},{x:451,y:208,w:93,h:78,t:0},{x:665,y:211,w:65,h:76,t:2},
-{x:25,y:378,w:91,h:73,t:2},{x:226,y:370,w:88,h:87,t:0},{x:448,y:373,w:93,h:72,t:1},{x:665,y:369,w:66,h:89,t:1},
-{x:218,y:518,w:89,h:54,t:2},{x:465,y:516,w:96,h:55,t:0}
-];
+let buildings=[];
+function layoutBuildings(){
+ const portrait=W/H<.78,cols=portrait?[.16,.5,.84]:[.12,.37,.63,.88],rows=portrait?[.1,.3,.5,.7,.9]:[.12,.38,.62,.88];
+ const bw=W*(portrait?.19:.155),bh=H*(portrait?.105:.135),out=[];
+ rows.forEach((ry,ri)=>cols.forEach((cx,ci)=>out.push({x:cx*W-bw/2,y:ry*H-bh/2,w:bw*rnd(.88,1.08),h:bh*rnd(.9,1.08),t:(ri+ci+stage)%3})));
+ return out;
+}
+function resizeWorld(){
+ const oldW=W,oldH=H,rect=canvas.getBoundingClientRect();
+ if(!rect.width||!rect.height)return;
+ W=rect.width;H=rect.height;
+ const dpr=Math.min(window.devicePixelRatio||1,2);
+ canvas.width=Math.round(W*dpr);canvas.height=Math.round(H*dpr);
+ ctx.setTransform(dpr,0,0,dpr,0,0);
+ if(oldW>0&&oldH>0&&(humans.length||zombies.length)){
+  const sx=W/oldW,sy=H/oldH;
+  [humans,zombies,particles,floating].forEach(list=>list.forEach(o=>{if(typeof o.x==="number")o.x*=sx;if(typeof o.y==="number")o.y*=sy;}));
+ }
+ buildings=layoutBuildings();
+}
 function setupMission(showOverlay=true){
  running=false;paused=false;ended=false;endingType="";elapsed=0;missionTime=0;uiClock=0;howlTime=0;howlCd=0;sporeCd=0;pendingSkill="";neutralized=0;escaped=0;casualties=0;alert=0;particles=[];floating=[];zombies=[];humans=[];spawnId=1;
  const s=activeStage(),d=diff();
@@ -108,7 +122,7 @@ function setupMission(showOverlay=true){
  log("进入 "+COUNTRIES[country].name+" / "+s.title+" · "+d.name+"。");
 }
 function spawnStarterSquad(){
- for(let i=0;i<4;i++)spawnZombie("walker",125+i*13,290+(i%2)*20,true);
+ for(let i=0;i<4;i++){const p=freeSpot(18);spawnZombie("walker",p.x,p.y,true);}
 }
 function showOverlayCard(symbol,kicker,title,copy,action){
  $("overlay-symbol").textContent=symbol;$("overlay-kicker").textContent=kicker;$("overlay-title").textContent=title;$("overlay-copy").textContent=copy;$("overlay-action").innerHTML=action+' <span>↗</span>';$("battle-overlay").classList.remove("hidden");
@@ -199,7 +213,7 @@ function moveEntity(e,tx,ty,speed,dt){
  }
  e.x=clamp(nx,9,W-9);e.y=clamp(ny,25,H-22);
 }
-function exits(){return[{x:W-15,y:315,label:"撤离"},{x:370,y:H-12,label:"撤离"},{x:13,y:315,label:"撤离"}];}
+function exits(){return[{x:W-12,y:H*.5,label:"撤离"},{x:W*.5,y:H-12,label:"撤离"},{x:12,y:H*.5,label:"撤离"}];}
 function closestExit(h){let best=exits()[0],bd=Infinity;for(const e of exits()){const d=dist(h,e);if(d<bd){bd=d;best=e;}}return best;}
 function update(dt){
  meta.energy=clamp(meta.energy+energyRate()*dt,0,energyMax());
@@ -355,14 +369,21 @@ function drawWorld(){
   c.fillStyle=n<4?dark:n<8?base:light;c.fillRect(x,y,29,29);
   if(n===2){c.fillStyle="#b2bd7930";c.fillRect(x+4,y+8,4,2);c.fillRect(x+19,y+20,3,3);}
  }
- // Streets
+ // Responsive street grid adapts to portrait and landscape viewports.
+ const portrait=W/H<.78;
+ const roadH=clamp(H*(portrait?.055:.075),27,54),roadW=clamp(W*(portrait?.075:.055),25,60);
+ const roadYs=portrait?[H*.2,H*.4,H*.6,H*.8]:[H*.25,H*.5,H*.75];
+ const roadXs=portrait?[W/3,W*2/3]:[W*.25,W*.5,W*.75];
  c.fillStyle=theme==="oldtown"?"#6c6b59":"#555c4a";
- [[0,126,W,62],[0,303,W,63],[0,476,W,64],[118,0,58,H],[361,0,59,H],[604,0,58,H]].forEach(r=>{c.fillRect(...r);});
+ roadYs.forEach(y=>c.fillRect(0,y-roadH/2,W,roadH));
+ roadXs.forEach(x=>c.fillRect(x-roadW/2,0,roadW,H));
  c.fillStyle="#b8b18c40";
- for(let x=5;x<W;x+=42){c.fillRect(x,154,20,2);c.fillRect(x,331,20,2);c.fillRect(x,505,20,2);}
- for(let y=5;y<H;y+=43){c.fillRect(146,y,2,20);c.fillRect(389,y,2,20);c.fillRect(632,y,2,20);}
- // crosswalks
- for(let i=0;i<6;i++){c.fillStyle="#d5cda05b";c.fillRect(120+i*7,130,4,17);c.fillRect(365+i*7,130,4,17);c.fillRect(608+i*7,307,4,17);}
+ roadYs.forEach(y=>{for(let x=4;x<W;x+=42)c.fillRect(x,y-1,20,2);});
+ roadXs.forEach(x=>{for(let y=5;y<H;y+=43)c.fillRect(x-1,y,2,20);});
+ for(const y of roadYs)for(const x of roadXs){
+  c.fillStyle="#d5cda05b";
+  for(let i=0;i<5;i++){c.fillRect(x-roadW/2+3+i*7,y-roadH/2+3,4,Math.max(8,roadH-6));c.fillRect(x-roadW/2+3,y-roadH/2+3+i*7,Math.max(8,roadW-6),3);}
+ }
  // Buildings and yards
  buildings.forEach((b,i)=>{
   const wall=theme==="oldtown"?["#b58b65","#ad795b","#c29a70"][b.t]:["#73856a","#6e8a78","#a39b70"][b.t];
@@ -381,13 +402,13 @@ function drawWorld(){
   if((i+stage)%4===0){c.fillStyle="#c8bd7d";c.fillRect(b.x+b.w-10,b.y+b.h-7,5,3);}
  });
  // Road clutter / emergency vehicles
- drawCar(268,139,theme==="oldtown"?"#ab624d":"#64788b",false);
- drawCar(523,346,"#9d4f45",true);
- drawCar(280,491,"#c3b58a",false);
+ drawCar(W*.35,H*.24,theme==="oldtown"?"#ab624d":"#64788b",false);
+ drawCar(W*.69,H*.58,"#9d4f45",true);
+ drawCar(W*.37,H*.83,"#c3b58a",false);
  // Scatter shrubs / fence
  for(let i=0;i<29;i++){
   const x=(i*137+41+stage*17)%W,y=(i*83+38+country.charCodeAt(0))%H;
-  if(!isBlocked(x,y,4)&&!((y>122&&y<191)||(y>300&&y<370)||(y>472&&y<545)||(x>115&&x<180)||(x>358&&x<423)||(x>600&&x<666))){
+  if(!isBlocked(x,y,4)){
    c.fillStyle="#213c2b";c.beginPath();c.arc(x,y,4+(i%3),0,Math.PI*2);c.fill();c.fillStyle="#55764b";c.fillRect(x-1,y-3,3,4);
   }
  }
@@ -405,7 +426,7 @@ function drawWorld(){
  particles.forEach(drawParticle);
  floating.forEach(drawFloat);
  // Vignette
- const g=c.createRadialGradient(W/2,H/2,130,W/2,H/2,440);g.addColorStop(0,"#06100800");g.addColorStop(1,"#0510086b");c.fillStyle=g;c.fillRect(0,0,W,H);
+ const g=c.createRadialGradient(W/2,H/2,Math.min(W,H)*.22,W/2,H/2,Math.max(W,H)*.72);g.addColorStop(0,"#06100800");g.addColorStop(1,"#0510086b");c.fillStyle=g;c.fillRect(0,0,W,H);
 }
 function drawCar(x,y,color,vertical){
  ctx.save();ctx.translate(x,y);if(vertical)ctx.rotate(Math.PI/2);
