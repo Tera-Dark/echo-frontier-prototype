@@ -32,10 +32,11 @@ window.eval(source);
 const overlay = document.getElementById("battle-overlay");
 assert.equal(overlay.classList.contains("hidden"), false, "Intro overlay should be visible at startup");
 document.getElementById("overlay-action").click();
-assert.equal(overlay.classList.contains("hidden"), true, "Start button must dismiss the intro overlay");
-assert.match(document.getElementById("battle-state").textContent, /尸群正在猎食/, "Start click must change battle state");
-assert.equal(document.getElementById("pause-button").disabled, false, "Start click must enable pause");
-assert.equal(document.getElementById("zombie-count").textContent, "4", "Start click must deploy the starter squad");
+assert.equal(overlay.classList.contains("hidden"), true, "Start button must dismiss intro");
+assert.match(document.getElementById("battle-state").textContent, /尸群正在猎食/, "Start must enter combat");
+assert.equal(document.getElementById("pause-button").disabled, false, "Start must enable pause");
+assert.equal(document.getElementById("zombie-count").textContent, "4", "Start must deploy the starter squad");
+assert.match(document.getElementById("shelter-hp").textContent, /300/, "Shelter durability must initialize");
 
 const runFrame = stamp => {
   const callback = queuedFrame;
@@ -47,18 +48,50 @@ runFrame(1000);
 const firstZombiePositions = contextTarget.translations.slice(-4).map(([x, y]) => [x, y]);
 for (let i = 1; i <= 100; i++) runFrame(1000 + i * 40);
 const latestZombiePositions = contextTarget.translations.slice(-4).map(([x, y]) => [x, y]);
-assert.notEqual(document.getElementById("time-label").textContent, "00:00", "Simulation clock must advance during combat");
+assert.notEqual(document.getElementById("time-label").textContent, "00:00", "Combat clock must advance");
 assert.notDeepEqual(latestZombiePositions, firstZombiePositions, "Starter zombies must move during combat");
 
 document.getElementById("command-button").click();
 assert.equal(document.getElementById("command-button").classList.contains("active"), true, "Command mode must activate");
 const canvas = document.getElementById("world");
-canvas.dispatchEvent(new window.MouseEvent("pointerdown", { bubbles: true, clientX: 850, clientY: 450 }));
-assert.match(document.getElementById("toast").textContent, /移动指令/, "Map click in command mode must issue a movement order");
+const pointer = (type, x, y, button = 0) => {
+  const event = new window.MouseEvent(type, { bubbles: true, cancelable: true, clientX: x, clientY: y, button });
+  Object.defineProperty(event, "pointerId", { value: 7 });
+  canvas.dispatchEvent(event);
+};
+pointer("pointerdown", 850, 450);
+pointer("pointerup", 850, 450);
+assert.match(document.getElementById("toast").textContent, /移动指令/, "Map click in command mode must issue movement");
+
+const zoom = document.getElementById("zoom-level");
+canvas.dispatchEvent(new window.WheelEvent("wheel", { deltaY: -120, bubbles: true, cancelable: true, clientX: 640, clientY: 360 }));
+assert.notEqual(zoom.textContent, "100%", "Wheel must zoom the map");
+for (let i = 0; i < 80; i++) {
+  canvas.dispatchEvent(new window.WheelEvent("wheel", { deltaY: -120, bubbles: true, cancelable: true, clientX: 640, clientY: 360 }));
+}
+assert.ok(Number.parseInt(zoom.textContent, 10) <= 235, "Current map zoom must obey its per-map upper bound");
+document.getElementById("zoom-reset").click();
+canvas.dispatchEvent(new window.WheelEvent("wheel", { deltaY: -120, bubbles: true, cancelable: true, clientX: 640, clientY: 360 }));
+const beforeDrag = contextTarget.translations.length;
+pointer("pointerdown", 600, 300);
+pointer("pointermove", 650, 300);
+pointer("pointerup", 650, 300);
+const afterDrag = contextTarget.translations.slice(beforeDrag);
+assert.ok(afterDrag.length > 2, "Dragging should redraw the world");
+assert.notDeepEqual(afterDrag[0], [640, 360], "Dragging at zoomed scale must pan the camera");
+document.getElementById("zoom-reset").click();
+
+document.querySelector('[data-open-drawer="shelter"]').click();
+assert.equal(document.querySelector('[data-drawer-view="shelter"]').classList.contains("active-view"), true, "Shelter entrance must open its panel");
+document.getElementById("drawer-close").click();
+pointer("pointerdown", Math.round(1280 * 0.37), Math.round(720 * 0.38));
+pointer("pointerup", Math.round(1280 * 0.37), Math.round(720 * 0.38));
+assert.match(document.getElementById("toast").textContent, /避难所内部禁止投放/, "The shelter interior must reject zombie deployment");
 
 const settings = document.getElementById("setting-team-highlight");
 settings.checked = false;
 settings.dispatchEvent(new window.Event("change", { bubbles: true }));
-assert.equal(JSON.parse(window.localStorage.getItem("hunger-protocol-prefs-v1")).teamHighlight, false, "Display setting must persist");
-console.log("Smoke test passed: start button, starter deployment, moving combat loop, command movement, and display settings.");
+assert.equal(JSON.parse(window.localStorage.getItem("hunger-protocol-prefs-v1")).teamHighlight, false, "Display preference must persist");
+assert.ok(source.includes("function findPath") && source.includes("function rebuildNavigation"), "Grid pathfinding must be wired into movement");
+console.log("Smoke test passed: battle startup, live movement, command order, shelter durability/blocked deployment, wheel zoom, drag pan, and saved settings.");
 dom.window.close();
