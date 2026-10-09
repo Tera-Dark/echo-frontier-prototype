@@ -65,7 +65,7 @@ var defs={
 var relicDefs={
  still:{name:"静滞线圈",rarity:"稀有",kind:"rare",cost:95,echo:3,desc:"霜蚀塔减速效果增强；装备后全局控制时间延长。"},
  prism:{name:"裂光棱镜",rarity:"史诗",kind:"epic",cost:140,echo:5,desc:"裂弧塔获得额外弹射，并提高连锁伤害。"},
- bell:{name:"回响之钟",rarity:"传奇",kind:"epic",cost:210,echo:8,desc:"每波首次击杀精英后触发爆发，获得额外合金。"}
+ bell:{name:"回响之钟",rarity:"传奇",kind:"epic",cost:210,echo:8,desc:"装备后击败精英额外获得 30 合金。"}
 };
 var baseDefaults=function(){return{alloy:160,echo:0,research:0,core:100,wave:1,stage:1,kills:0,towers:[],nextId:1,inventory:{},equipped:[],upgrades:{calibration:0,supply:0,capacity:0},log:["终灯站已上线。等待首次部署。"]};};
 var state=baseDefaults(),selectedBuild="bolt",selectedTower=null,tab="relics",running=false,paused=false,speed=1,queue=[],enemies=[],tick=0,shotTick=0,toastTimer=null;
@@ -149,7 +149,7 @@ function sellTower(){
 }
 function startWave(){
  if(running&&paused){paused=false;render();return;}if(running)return;
- running=true;paused=false;tick=0;enemies=[];queue=[];
+ running=true;paused=false;tick=0;enemies=[];queue=[];if(state.wave===1&&state.upgrades.supply>0){var supplyBonus=20*state.upgrades.supply;state.alloy+=supplyBonus;note("后勤储备提供额外合金 +"+supplyBonus+"。");}
  var count=6+state.wave*2+Math.min(4,state.stage);
  for(var i=0;i<count;i++)queue.push({type:state.wave>=2&&Math.random()>.58?"runner":state.stage>=2&&Math.random()>.82?"brute":"shade",boss:false});
  if(state.wave===3)queue.push({type:"brute",boss:true});
@@ -196,13 +196,13 @@ function battleStep(){
   t.cool=d.cool;
   var mult=1+(state.upgrades.calibration||0)*.07;
   state.towers.forEach(function(n){if(n.type==="node"&&Math.hypot(n.x-t.x,n.y-t.y)<=defs.node.range)mult*=1.25;});
-  if(t.type==="bolt"&&hasRelic("bell"))mult*=1.1;
+  
   targets.slice(0,t.type==="arc"?(hasRelic("prism")?3:2):1).forEach(function(e,index){
    var dmg=d.damage*t.level*mult*(index===0?1:.6);e.hp-=dmg;
    if(t.type==="frost")e.slow=hasRelic("still")?5:3;
    if(e.hp<=0){
     enemies=enemies.filter(function(n){return n!==e;});state.kills++;state.alloy+=3+(e.boss?15:0);
-    if(e.boss){state.echo+=4;state.research+=6;state.inventory["bell"]=(state.inventory["bell"]||0)+1;note("精英被击破！取得传奇战利品「回响之钟」。");toast("精英掉落：回响之钟");}
+    if(e.boss){state.echo+=4;state.research+=6;var lootRoll=Math.random(),dropId=lootRoll<.55?"still":lootRoll<.88?"prism":"bell";state.inventory[dropId]=(state.inventory[dropId]||0)+1;if(hasRelic("bell"))state.alloy+=30;note("精英被击破！战利品：「"+relicDefs[dropId].name+"」。");toast("精英掉落："+relicDefs[dropId].name);}
     else if(Math.random()<.08){state.echo+=1;note("敌人残响中回收了 1 枚额外碎片。");}
    }
   });
