@@ -26,10 +26,14 @@ jobs:
           from pathlib import Path
           html = Path("index.html").read_text(encoding="utf-8")
           css = Path("style.css").read_text(encoding="utf-8")
+          js = Path("game.js").read_text(encoding="utf-8")
           assert 'name="viewport"' in html, "Missing responsive viewport metadata"
           assert 'href="style.css"' in html and 'src="game.js"' in html, "Missing app assets"
           assert "max-width:760px" in css and "orientation:landscape" in css, "Missing responsive layouts"
-          print("HTML assets and mobile/landscape layouts validated.")
+          assert 'id="command-button"' in html and "function commandHorde" in js, "Missing playable horde command controls"
+          assert 'data-drawer-view="settings"' in html and 'id="setting-team-highlight"' in html, "Missing in-game display settings"
+          assert "const worldScale=()=>" in js and "preferences.teamHighlight" in js, "Missing scale-aware entity rendering"
+          print("Assets, responsive layouts, gameplay commands, settings, and scale-aware rendering validated.")
           PY
           node --check game.js
       - name: Configure Pages
