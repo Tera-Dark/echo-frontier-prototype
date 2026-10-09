@@ -24,16 +24,14 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
-          import re
           html = Path("index.html").read_text(encoding="utf-8")
-          scripts = re.findall(r"<script>(.*?)</script>", html, flags=re.S)
-          assert len(scripts) == 1, "Expected exactly one inline game script"
-          Path("/tmp/echo-frontier.js").write_text(scripts[0], encoding="utf-8")
+          css = Path("style.css").read_text(encoding="utf-8")
           assert 'name="viewport"' in html, "Missing responsive viewport metadata"
-          assert "orientation:landscape" in html, "Missing desktop landscape breakpoint"
-          print("HTML contains viewport metadata and mobile/desktop layouts.")
+          assert 'href="style.css"' in html and 'src="game.js"' in html, "Missing app assets"
+          assert "max-width:760px" in css and "orientation:landscape" in css, "Missing responsive layouts"
+          print("HTML assets and mobile/landscape layouts validated.")
           PY
-          node --check /tmp/echo-frontier.js
+          node --check game.js
       - name: Configure Pages
         uses: actions/configure-pages@v5
       - name: Upload static site
