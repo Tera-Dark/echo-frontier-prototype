@@ -15,6 +15,12 @@
     <span class="brand-mark"><i></i><i></i><i></i></span>
     <span class="brand-copy"><strong>尸潮纪元</strong><small>HUNGER PROTOCOL <b>DEMO 0.1</b></small></span>
   </a>
+  <nav class="quick-nav" aria-label="游戏面板">
+    <button class="quick-nav-button active" data-open-drawer="campaign" title="战区"><span>◎</span><small>战区</small></button>
+    <button class="quick-nav-button" data-open-drawer="nest" title="尸巢"><span>⌂</span><small>尸巢</small></button>
+    <button class="quick-nav-button" data-open-drawer="loot" title="器官"><span>✧</span><small>器官</small></button>
+    <button class="quick-nav-button" data-open-drawer="log" title="记录"><span>≡</span><small>记录</small></button>
+  </nav>
   <div class="topright">
     <span class="save-status"><i></i> 本地存档</span>
     <button class="quiet-button" id="reset-game" title="重置本地演示进度">重置实验</button>
@@ -73,6 +79,7 @@
     </div>
   </div>
 
+  <div class="bottom-dock" id="bottom-dock">
   <section class="deploy-section">
     <div class="section-heading"><div><span class="eyebrow">01 / DEPLOY</span><h2>部署尸群</h2></div><span class="muted">点选单位，再点击地图</span></div>
     <div class="unit-grid">
@@ -105,9 +112,22 @@
     </div>
   </section>
 </section>
+  </div>
+</section>
 
-<aside class="management-column">
-  <section class="panel campaign-panel">
+<div class="drawer-backdrop" id="drawer-backdrop"></div>
+<aside class="management-column" id="management-drawer" aria-label="游戏管理面板">
+  <div class="drawer-header">
+    <div><span class="eyebrow">HIVE CONTROL</span><h2 id="drawer-title">全球猎食地图</h2></div>
+    <button class="drawer-close" id="drawer-close" aria-label="关闭面板">×</button>
+  </div>
+  <nav class="drawer-tabs" aria-label="管理面板">
+    <button class="drawer-tab active" data-drawer-tab="campaign">战区</button>
+    <button class="drawer-tab" data-drawer-tab="nest">尸巢</button>
+    <button class="drawer-tab" data-drawer-tab="loot">器官</button>
+    <button class="drawer-tab" data-drawer-tab="log">记录</button>
+  </nav>
+  <section class="panel campaign-panel" data-drawer-view="campaign">
     <div class="side-heading"><div><span class="eyebrow">GLOBAL CAMPAIGN</span><h2>全球猎食地图</h2></div><span class="world-glyph">◎</span></div>
     <div class="country-row">
       <label for="country-select">当前战区</label><select id="country-select">
@@ -132,7 +152,7 @@
     <button class="outline-button full-button" id="replay-stage">重置本关战场 ↻</button>
   </section>
 
-  <section class="panel nest-panel">
+  <section class="panel nest-panel" data-drawer-view="nest">
     <div class="side-heading"><div><span class="eyebrow">META PROGRESSION</span><h2>尸巢核心</h2></div><span class="nest-level" id="nest-level">LV. 1</span></div>
     <p class="side-description">吞噬带来成长，脑髓解锁进化。升级不会随关卡重置。</p>
     <div class="nest-stats">
@@ -147,13 +167,13 @@
     </div>
   </section>
 
-  <section class="panel loot-panel">
+  <section class="panel loot-panel" data-drawer-view="loot">
     <div class="side-heading"><div><span class="eyebrow">RARE DROPS</span><h2>突变器官</h2></div><span class="loot-count" id="loot-count">0 / 3</span></div>
     <p class="side-description">精英与高难度关卡掉落。装备器官会改变尸群的行为规则。</p>
     <div id="organ-list" class="organ-list"></div>
   </section>
 
-  <section class="panel event-panel">
+  <section class="panel event-panel" data-drawer-view="log">
     <div class="side-heading"><div><span class="eyebrow">FIELD LOG</span><h2>尸巢记录</h2></div><button id="clear-log" class="text-button">清除</button></div>
     <div id="event-log" class="event-log"><p><i>00:00</i> 休眠巢穴已苏醒，等待首次猎食。</p></div>
   </section>
