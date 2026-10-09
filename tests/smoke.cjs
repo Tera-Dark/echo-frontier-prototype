@@ -104,7 +104,7 @@ assert.equal(document.querySelector('[data-drawer-view="shelter"]').classList.co
 document.getElementById("drawer-close").click();
 pointer("pointerdown", Math.round(1280 * 0.37), Math.round(720 * 0.38));
 pointer("pointerup", Math.round(1280 * 0.37), Math.round(720 * 0.38));
-assert.match(document.getElementById("toast").textContent, /避难所内部禁止投放/, "The shelter interior must reject zombie deployment");
+assert.match(document.getElementById("toast").textContent, /避难所与入口区域禁止投放/, "The shelter interior must reject zombie deployment");
 
 const settings = document.getElementById("setting-team-highlight");
 settings.checked = false;
