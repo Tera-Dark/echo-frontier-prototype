@@ -259,7 +259,7 @@ body{min-height:0}
  .resource-strip{left:12px;right:auto;width:550px;max-width:47vw}
  .mission-header{top:calc(env(safe-area-inset-top) + 116px);width:min(365px,34vw)}
  .battle-toolbar{top:calc(env(safe-area-inset-top) + 116px)}
- .world-hud{top:calc(env(safe-area-inset-top) + 167px);justify-content:flex-start}
+ .world-hud{top:calc(env(safe-area-inset-top) + 167px);justify-content:flex-end}
  .bottom-dock{bottom:calc(env(safe-area-inset-bottom) + 12px)}
  .battle-footer{bottom:calc(env(safe-area-inset-bottom) + 159px);left:12px;right:auto;width:min(500px,40vw);margin:0}
  .canvas-hint{bottom:calc(env(safe-area-inset-bottom) + 157px)}
