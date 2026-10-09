@@ -579,6 +579,35 @@ function selectDifficulty(value){
  difficulty=Number(value);setupMission(true);
 }
 function showHelpHint(){const hint=$("canvas-hint");hint.classList.remove("fade");setTimeout(()=>hint.classList.add("fade"),7500);}
+
+function setDrawerView(view){
+ const panel=[...document.querySelectorAll("[data-drawer-view]")].find(el=>el.dataset.drawerView===view);
+ if(!panel)return;
+ document.querySelectorAll("[data-drawer-view]").forEach(el=>el.classList.toggle("active-view",el===panel));
+ document.querySelectorAll("[data-drawer-tab]").forEach(el=>el.classList.toggle("active",el.dataset.drawerTab===view));
+ document.querySelectorAll("[data-open-drawer]").forEach(el=>el.classList.toggle("active",el.dataset.openDrawer===view));
+ const titles={campaign:"全球猎食地图",nest:"尸巢核心",loot:"突变器官",log:"尸巢记录"};
+ $("drawer-title").textContent=titles[view]||"巢穴管理";
+}
+function openDrawer(view){
+ setDrawerView(view);
+ $("management-drawer").classList.add("open");
+ $("drawer-backdrop").classList.add("visible");
+}
+function closeDrawer(){
+ $("management-drawer").classList.remove("open");
+ $("drawer-backdrop").classList.remove("visible");
+}
+document.querySelectorAll("[data-open-drawer]").forEach(b=>b.addEventListener("click",()=>{
+ const view=b.dataset.openDrawer;
+ if($("management-drawer").classList.contains("open")&&document.querySelector('[data-drawer-view].active-view')?.dataset.drawerView===view){closeDrawer();return;}
+ openDrawer(view);
+}));
+document.querySelectorAll("[data-drawer-tab]").forEach(b=>b.addEventListener("click",()=>setDrawerView(b.dataset.drawerTab)));
+$("drawer-close").addEventListener("click",closeDrawer);
+$("drawer-backdrop").addEventListener("click",closeDrawer);
+setDrawerView("campaign");
+
 $("overlay-action").addEventListener("click",()=>{
  const mode=$("overlay-action").dataset.mode;
  if(mode==="next"){
@@ -620,6 +649,7 @@ $("reset-game").addEventListener("click",()=>{
  localStorage.removeItem(STORE);meta=saveDefaults();country="nz";stage=0;difficulty=0;selectedUnit="walker";policy="feed";setupMission(true);$("event-log").innerHTML="";log("巢穴已重置。新的猎食周期开始。");toast("本地存档已重置");
 });
 document.addEventListener("visibilitychange",()=>{if(document.hidden&&running&&!ended){paused=true;$("pause-button").textContent="▶ 继续";updateUI();}});
-document.addEventListener("keydown",e=>{if(e.key==="Escape"&&pendingSkill){pendingSkill="";$("canvas-hint").textContent="选择下方单位，再点击地图投放尸群";toast("已取消技能瞄准。");}});
+document.addEventListener("keydown",e=>{if(e.key==="Escape"){if($("management-drawer").classList.contains("open"))closeDrawer();if(pendingSkill){pendingSkill="";$("canvas-hint").textContent="选择下方单位，再点击地图投放尸群";toast("已取消技能瞄准。");}}});
+resizeWorld();window.addEventListener("resize",()=>{resizeWorld();drawWorld();});
 setupMission(true);renderUI();showHelpHint();requestAnimationFrame(mainLoop);
 })();
