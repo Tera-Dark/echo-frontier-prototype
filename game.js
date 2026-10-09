@@ -35,12 +35,17 @@ const ORGANS={
 const saveDefaults=()=>({biomass:80,brains:5,essence:0,energy:100,upgrades:{capacity:0,infection:0,energy:0},inventory:{},equipped:[],cleared:{nz:0,pt:0},firstRewards:[],mutations:0});
 let meta=saveDefaults();
 try{const raw=localStorage.getItem(STORE);if(raw){const loaded=JSON.parse(raw);meta=Object.assign(saveDefaults(),loaded);meta.upgrades=Object.assign(saveDefaults().upgrades,loaded.upgrades||{});meta.inventory=loaded.inventory||{};meta.equipped=loaded.equipped||[];meta.cleared=Object.assign({nz:0,pt:0},loaded.cleared||{});meta.firstRewards=loaded.firstRewards||[];}}catch(e){}
+const PREFS_KEY="hunger-protocol-prefs-v1";
+let preferences={teamHighlight:true,healthBars:true};
+try{preferences=Object.assign({},preferences,JSON.parse(localStorage.getItem(PREFS_KEY)||"{}"));}catch(e){}
 let country="nz",stage=0,difficulty=0,selectedUnit="walker",policy="feed";
 let humans=[],zombies=[],particles=[],floating=[],decor=[];
-let running=false,paused=false,ended=false,endingType="",elapsed=0,lastStamp=0,uiClock=0,saveClock=0,speed=1,howlTime=0,howlCd=0,sporeCd=0,pendingSkill="",spawnId=1,missionTime=0,neutralized=0,escaped=0,casualties=0,alert=0;
+let running=false,paused=false,ended=false,endingType="",elapsed=0,lastStamp=0,uiClock=0,saveClock=0,speed=1,howlTime=0,howlCd=0,sporeCd=0,pendingSkill="",spawnId=1,missionTime=0,neutralized=0,escaped=0,casualties=0,alert=0,commandMode=false;
 let objectiveTarget=16,toastClock=0,firstMission=true,initialOverlay=true;
 const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
 const rnd=(a,b)=>a+Math.random()*(b-a);
+const worldScale=()=>clamp(Math.min(W/760,H/600),.82,1.85);
+function savePreferences(){try{localStorage.setItem(PREFS_KEY,JSON.stringify(preferences));}catch(e){}}
 const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 const isEquipped=id=>meta.equipped.includes(id);
 const activeStage=()=>COUNTRIES[country].stages[stage];
@@ -70,6 +75,14 @@ function freeSpot(minGap=0){
  }
  return{x:rnd(80,180),y:rnd(210,450)};
 }
+function freeSpotAround(cx,cy,radius,minGap=0){
+ for(let i=0;i<110;i++){
+  const a=rnd(0,Math.PI*2),r=Math.sqrt(Math.random())*radius;
+  const p={x:clamp(cx+Math.cos(a)*r,18,W-18),y:clamp(cy+Math.sin(a)*r,32,H-28)};
+  if(!isBlocked(p.x,p.y,9)&&(!minGap||zombies.every(z=>!z.alive||dist(z,p)>minGap)))return p;
+ }
+ return freeSpot(minGap);
+}
 function isBlocked(x,y,pad=0){
  for(const b of buildings){if(x>b.x-pad&&x<b.x+b.w+pad&&y>b.y-pad&&y<b.y+b.h+pad)return true;}return false;
 }
@@ -94,21 +107,22 @@ function resizeWorld(){
  buildings=layoutBuildings();
 }
 function setupMission(showOverlay=true){
- running=false;paused=false;ended=false;endingType="";elapsed=0;missionTime=0;uiClock=0;howlTime=0;howlCd=0;sporeCd=0;pendingSkill="";neutralized=0;escaped=0;casualties=0;alert=0;particles=[];floating=[];zombies=[];humans=[];spawnId=1;
+ running=false;paused=false;ended=false;endingType="";elapsed=0;missionTime=0;uiClock=0;howlTime=0;howlCd=0;sporeCd=0;pendingSkill="";commandMode=false;neutralized=0;escaped=0;casualties=0;alert=0;particles=[];floating=[];zombies=[];humans=[];spawnId=1;
  const s=activeStage(),d=diff();
  const civilianCount=s.pop+d.pop+(stage?2:0);
  objectiveTarget=Math.ceil(civilianCount*(s.goal+d.goal*.12));
  const guardCount=s.guards+d.guard;
+ const hotspot={x:W*.5,y:H*.48},spawnRadius=Math.min(W,H)*.29;
  for(let i=0;i<civilianCount;i++){
-  const p=freeSpot();
+  const p=freeSpotAround(hotspot.x,hotspot.y,spawnRadius);
   humans.push({id:"h"+spawnId++,x:p.x,y:p.y,hp:16*d.hp,maxHp:16*d.hp,kind:"civilian",alive:true,speed:rnd(17,22)*d.speed,attackCd:0,panic:false,infected:0,value:1,seed:rnd(0,100)});
  }
  for(let i=0;i<guardCount;i++){
-  const p=freeSpot();
+  const p=freeSpotAround(hotspot.x,hotspot.y,spawnRadius);
   humans.push({id:"g"+spawnId++,x:p.x,y:p.y,hp:48*d.hp,maxHp:48*d.hp,kind:"guard",alive:true,speed:rnd(12,15)*d.speed,attackCd:rnd(.2,1),panic:false,infected:0,damage:8*d.hp,range:125,seed:rnd(0,100)});
  }
  if(difficulty>=2){
-  const p=freeSpot();
+  const p=freeSpotAround(hotspot.x,hotspot.y,spawnRadius);
   humans.push({id:"e"+spawnId++,x:p.x,y:p.y,hp:100*d.hp,maxHp:100*d.hp,kind:"elite",alive:true,speed:14*d.speed,attackCd:.6,panic:false,infected:0,damage:16*d.hp,range:155,seed:rnd(0,100)});
  }
  drawWorld();renderUI();renderOrgans();
@@ -122,7 +136,8 @@ function setupMission(showOverlay=true){
  log("进入 "+COUNTRIES[country].name+" / "+s.title+" · "+d.name+"。");
 }
 function spawnStarterSquad(){
- for(let i=0;i<4;i++){const p=freeSpot(18);spawnZombie("walker",p.x,p.y,true);}
+ const lead=humans.find(h=>h.alive&&h.kind==="civilian")||{x:W*.5,y:H*.48};
+ for(let i=0;i<4;i++){const p=freeSpotAround(lead.x,lead.y,74*worldScale(),14*worldScale());spawnZombie("walker",p.x,p.y,true);}
 }
 function showOverlayCard(symbol,kicker,title,copy,action){
  $("overlay-symbol").textContent=symbol;$("overlay-kicker").textContent=kicker;$("overlay-title").textContent=title;$("overlay-copy").textContent=copy;$("overlay-action").innerHTML=action+' <span>↗</span>';$("battle-overlay").classList.remove("hidden");
@@ -142,7 +157,7 @@ function spawnZombie(type,x,y,free=false){
  const p={x,y};
  if(isBlocked(x,y,8)){const spot=freeSpot();p.x=spot.x;p.y=spot.y;}
  const carapace=isEquipped("carapace")?1.25:1;
- zombies.push({id:"z"+spawnId++,type,x:p.x,y:p.y,hp:spec.hp*carapace,maxHp:spec.hp*carapace,speed:spec.speed,damage:spec.damage,attackCd:rnd(.1,.6),alive:true,age:0,trail:[],seed:rnd(0,500),hitFlash:0});
+ zombies.push({id:"z"+spawnId++,type,x:p.x,y:p.y,hp:spec.hp*carapace,maxHp:spec.hp*carapace,speed:spec.speed,damage:spec.damage,attackCd:rnd(.1,.6),alive:true,age:0,trail:[],seed:rnd(0,500),hitFlash:0,moveOrder:null});
  particles.push({x:p.x,y:p.y,life:.5,max:.5,type:"spawn"});
  floating.push({x:p.x,y:p.y-14,text:free?"集结":("-"+spec.cost+" ϟ"),life:.9,max:.9,color:free?"#c6dfa0":"#b7d77b"});
  meta.mutations++;persist();return true;
@@ -151,6 +166,7 @@ function spawnAtCanvas(evt){
  if(!running||paused||ended){toast(ended?"先进入下一场猎食。":"先点击“开始围猎”启动战斗。");return;}
  const rect=canvas.getBoundingClientRect(),x=(evt.clientX-rect.left)/rect.width*W,y=(evt.clientY-rect.top)/rect.height*H;
  if(pendingSkill==="spore"){castSpore(x,y);return;}
+ if(commandMode){commandHorde(x,y);return;}
  if(isBlocked(x,y,10)){toast("这里是建筑区，尸群无法从建筑内部投放。");return;}
  if(spawnZombie(selectedUnit,x,y)){toast(UNITS[selectedUnit].name+"已投放");renderUI();}
 }
@@ -174,6 +190,22 @@ function castHowl(){
  meta.brains-=2;howlTime=6;howlCd=15;persist();
  for(const z of zombies)if(z.alive)particles.push({x:z.x,y:z.y,life:.8,max:.8,type:"howl"});
  log("血腥号令：全体尸群暂时加速。");toast("血腥号令！尸群进入狂猎状态。");renderUI();
+}
+function commandHorde(x,y){
+ const squad=zombies.filter(z=>z.alive);
+ if(!squad.length){commandMode=false;updateUI();toast("尸群尚未集结，先部署单位。");return;}
+ if(isBlocked(x,y,10)){
+  const p=freeSpotAround(x,y,65*worldScale());x=p.x;y=p.y;
+ }
+ const radius=Math.min(46,13+squad.length*2.2)*worldScale();
+ squad.forEach((z,i)=>{
+  const angle=i*2.399963;
+  const ring=Math.sqrt((i+.25)/Math.max(1,squad.length))*radius;
+  z.moveOrder={x:clamp(x+Math.cos(angle)*ring,18,W-18),y:clamp(y+Math.sin(angle)*ring,28,H-28)};
+ });
+ particles.push({x,y,life:.85,max:.85,type:"command",radius:32*worldScale()});
+ commandMode=false;updateUI();
+ toast("尸群收到移动指令 · 抵达后恢复自动追猎");
 }
 function castSpore(x,y){
  if(sporeCd>0){pendingSkill="";toast("感染脉冲还在冷却。");return;}
@@ -203,7 +235,8 @@ function moveEntity(e,tx,ty,speed,dt){
  if(d<1.5)return;
  dx/=d;dy/=d;
  let nx=e.x+dx*speed*dt,ny=e.y+dy*speed*dt;
- if(isBlocked(nx,ny,7)){
+ const pad=7*worldScale();
+ if(isBlocked(nx,ny,pad)){
   const options=[
    {x:e.x-dy*speed*dt*1.3,y:e.y+dx*speed*dt*1.3},
    {x:e.x+dy*speed*dt*1.3,y:e.y-dx*speed*dt*1.3},
@@ -211,7 +244,8 @@ function moveEntity(e,tx,ty,speed,dt){
   ].filter(p=>!isBlocked(p.x,p.y,7)).sort((a,b)=>Math.hypot(tx-a.x,ty-a.y)-Math.hypot(tx-b.x,ty-b.y));
   if(options.length){nx=options[0].x;ny=options[0].y;}else return;
  }
- e.x=clamp(nx,9,W-9);e.y=clamp(ny,25,H-22);
+ const edge=9*worldScale();
+ e.x=clamp(nx,edge,W-edge);e.y=clamp(ny,25*worldScale(),H-22*worldScale());
 }
 function exits(){return[{x:W-12,y:H*.5,label:"撤离"},{x:W*.5,y:H-12,label:"撤离"},{x:12,y:H*.5,label:"撤离"}];}
 function closestExit(h){let best=exits()[0],bd=Infinity;for(const e of exits()){const d=dist(h,e);if(d<bd){bd=d;best=e;}}return best;}
@@ -231,20 +265,26 @@ function update(dt){
    if(h.panic){
     const ex=closestExit(h);let tx=ex.x,ty=ex.y;
     if(closest&&zd<65){const ax=h.x-closest.x,ay=h.y-closest.y,ad=Math.hypot(ax,ay)||1;tx=h.x+ax/ad*140+(ex.x-h.x)*.35;ty=h.y+ay/ad*140+(ex.y-h.y)*.35;}
-    moveEntity(h,tx,ty,h.speed*(h.panic?1.28:1),dt);
+    moveEntity(h,tx,ty,h.speed*(h.panic?1.28:1)*worldScale(),dt);
     if(exits().some(e=>dist(h,e)<11)){h.alive=false;escaped++;particles.push({x:h.x,y:h.y,life:.5,max:.5,type:"escape"});}
    }else if(Math.random()<dt*.35){h.x=clamp(h.x+rnd(-15,15),10,W-10);h.y=clamp(h.y+rnd(-15,15),20,H-20);}
   }else{
-   if(closest&&zd<h.range){if(h.attackCd<=0){h.attackCd=h.kind==="elite"?.52:.8;closest.hp-=h.damage;closest.hitFlash=.15;floating.push({x:closest.x,y:closest.y-10,text:"-"+Math.round(h.damage),life:.6,max:.6,color:"#e98779"});particles.push({x:closest.x,y:closest.y,life:.22,max:.22,type:"hit"});if(closest.hp<=0)killZombie(closest);}}
-   else if(closest)moveEntity(h,closest.x,closest.y,h.speed*.6,dt);
+   if(closest&&zd<h.range*worldScale()){if(h.attackCd<=0){h.attackCd=h.kind==="elite"?.52:.8;closest.hp-=h.damage;closest.hitFlash=.15;floating.push({x:closest.x,y:closest.y-10,text:"-"+Math.round(h.damage),life:.6,max:.6,color:"#e98779"});particles.push({x:closest.x,y:closest.y,life:.22,max:.22,type:"hit"});if(closest.hp<=0)killZombie(closest);}}
+   else if(closest)moveEntity(h,closest.x,closest.y,h.speed*.6*worldScale(),dt);
   }
  }
  for(const z of liveZ){
   if(!z.alive)continue;
   z.age+=dt;z.attackCd-=dt;z.hitFlash=Math.max(0,z.hitFlash-dt);
+  if(z.moveOrder){
+   if(dist(z,z.moveOrder)>9*worldScale()){
+    moveEntity(z,z.moveOrder.x,z.moveOrder.y,z.speed*(howlTime>0?1.75:1)*worldScale(),dt);continue;
+   }
+   z.moveOrder=null;
+  }
   const target=nearestTarget(z);if(!target)continue;
   const d=dist(z,target);
-  if(d<=UNITS[z.type].reach){
+  if(d<=UNITS[z.type].reach*worldScale()){
    if(z.attackCd<=0){
     const sp=UNITS[z.type],speedBonus=howlTime>0?1.75:1;
     z.attackCd=sp.rate/speedBonus;
@@ -259,7 +299,7 @@ function update(dt){
     }
    }
   }else{
-   const speed=z.speed*(howlTime>0?1.75:1)*(z.type==="runner"&&target.panic?1.22:1);
+   const speed=z.speed*(howlTime>0?1.75:1)*(z.type==="runner"&&target.panic?1.22:1)*1.18*worldScale();
    moveEntity(z,target.x,target.y,speed,dt);
   }
  }
@@ -434,7 +474,12 @@ function drawCar(x,y,color,vertical){
 }
 function drawHuman(h){
  if(!h.alive)return;const c=ctx;
- c.save();c.translate(h.x,h.y);
+ c.save();c.translate(h.x,h.y);c.scale(worldScale(),worldScale());
+ if(preferences.teamHighlight){
+  const civilian=h.kind==="civilian";
+  c.save();c.globalAlpha=.92;c.lineWidth=1.6;c.strokeStyle=civilian?"#ffc36c":"#ff655f";c.fillStyle=civilian?"rgba(255,195,108,.13)":"rgba(255,91,91,.15)";
+  c.beginPath();c.ellipse(0,2,civilian?9:12,civilian?8:11,0,0,Math.PI*2);c.fill();c.stroke();c.restore();
+ }
  if(h.kind==="civilian"){
   c.fillStyle="#18201770";c.beginPath();c.ellipse(1,5,5,3,0,0,Math.PI*2);c.fill();
   c.fillStyle=h.panic?"#d8b58b":"#d7c7a0";c.fillRect(-3,-1,7,8);c.fillStyle="#e8d5b0";c.fillRect(-2,-6,5,5);
@@ -447,19 +492,21 @@ function drawHuman(h){
   c.fillStyle="#252e33";c.fillRect(3,1,10,3);c.fillRect(10,0,4,2);
   if(h.kind==="elite"){c.strokeStyle="#ef9c68";c.lineWidth=1.5;c.strokeRect(-7,-9,15,21);}
  }
- if(h.hp<h.maxHp){c.fillStyle="#161b15";c.fillRect(-8,-12,16,2);c.fillStyle=h.kind==="civilian"?"#d7a67a":"#df796b";c.fillRect(-8,-12,16*Math.max(0,h.hp/h.maxHp),2);}
+ if(preferences.healthBars&&h.hp<h.maxHp){c.fillStyle="#161b15";c.fillRect(-8,-12,16,2);c.fillStyle=h.kind==="civilian"?"#d7a67a":"#df796b";c.fillRect(-8,-12,16*Math.max(0,h.hp/h.maxHp),2);}
  c.restore();
 }
 function drawZombie(z){
  if(!z.alive)return;const c=ctx,s=UNITS[z.type],r=z.type==="brute"?10:z.type==="runner"?6.5:7.5;
- c.save();c.translate(z.x,z.y);
+ c.save();c.translate(z.x,z.y);c.scale(worldScale(),worldScale());
+ if(preferences.teamHighlight){c.save();c.globalAlpha=.94;c.lineWidth=1.7;c.strokeStyle="#a9ee8c";c.fillStyle="rgba(143,226,115,.13)";c.beginPath();c.ellipse(0,2,r+4,r+2,0,0,Math.PI*2);c.fill();c.stroke();c.restore();}
+ if(z.moveOrder){c.strokeStyle="#d6e997";c.globalAlpha=.6;c.beginPath();c.moveTo(0,0);c.lineTo((z.moveOrder.x-z.x)/worldScale(),(z.moveOrder.y-z.y)/worldScale());c.stroke();c.globalAlpha=1;}
  if(howlTime>0){c.strokeStyle="#d7e68a99";c.beginPath();c.arc(0,0,r+4+Math.sin(z.age*12)*2,0,Math.PI*2);c.stroke();}
  c.fillStyle="#132017a8";c.beginPath();c.ellipse(1,r*.7,r+2,r*.56,0,0,Math.PI*2);c.fill();
  c.fillStyle=z.hitFlash>0?"#f2e5b1":s.color;
  if(z.type==="runner"){c.rotate(-.5);c.fillRect(-r*.6,-r*.3,r*1.8,r*.9);c.fillRect(r*.55,-r*.9,r*.8,r*.8);c.fillStyle="#e5ebc8";c.fillRect(r*.8,-r*.6,2,2);}
  else if(z.type==="brute"){c.fillRect(-r,-r*.4,r*2,r*1.65);c.fillRect(-r*.65,-r*1.35,r*1.3,r);c.fillStyle="#596748";c.fillRect(-r*.9,r*.7,r*.65,r*.65);c.fillRect(r*.3,r*.7,r*.65,r*.65);c.fillStyle="#f1d99b";c.fillRect(-r*.4,-r*.95,3,2);c.fillRect(r*.12,-r*.95,3,2);}
  else{c.fillRect(-r*.72,-r*.2,r*1.45,r*1.25);c.fillRect(-r*.52,-r*1.05,r*1.05,r*.95);c.fillStyle="#e5ebc8";c.fillRect(-r*.35,-r*.73,2,2);c.fillRect(r*.12,-r*.73,2,2);c.fillStyle="#587953";c.fillRect(-r*1.05,r*.1,r*.4,r*.8);c.fillRect(r*.65,r*.1,r*.4,r*.65);}
- if(z.hp<z.maxHp){c.fillStyle="#172018";c.fillRect(-r,-r-7,r*2,2);c.fillStyle="#8db775";c.fillRect(-r,-r-7,r*2*Math.max(0,z.hp/z.maxHp),2);}
+ if(preferences.healthBars&&z.hp<z.maxHp){c.fillStyle="#172018";c.fillRect(-r,-r-7,r*2,2);c.fillStyle="#8db775";c.fillRect(-r,-r-7,r*2*Math.max(0,z.hp/z.maxHp),2);}
  c.restore();
 }
 function drawParticle(p){
@@ -467,6 +514,9 @@ function drawParticle(p){
  if(p.type==="spore"||p.type==="infection"){
   c.strokeStyle=p.type==="spore"?"#b0e28a":"#82db9c";c.lineWidth=2;c.beginPath();c.arc(p.x,p.y,(1-ratio)*(p.radius||39)+5,0,Math.PI*2);c.stroke();
   for(let i=0;i<5;i++){const a=i*Math.PI*2/5+p.life*3;c.fillStyle="#b2e38b";c.fillRect(p.x+Math.cos(a)*(1-ratio)*45,p.y+Math.sin(a)*(1-ratio)*45,3,3);}
+ }else if(p.type==="command"){
+  c.strokeStyle="#d4ec98";c.lineWidth=2;c.beginPath();c.arc(p.x,p.y,(1-ratio)*(p.radius||28)+5,0,Math.PI*2);c.stroke();
+  c.beginPath();c.moveTo(p.x-5,p.y);c.lineTo(p.x+5,p.y);c.moveTo(p.x,p.y-5);c.lineTo(p.x,p.y+5);c.stroke();
  }else if(p.type==="spawn"||p.type==="howl"){
   c.strokeStyle=p.type==="spawn"?"#b5d985":"#e0dc8e";c.beginPath();c.arc(p.x,p.y,(1-ratio)*29+4,0,Math.PI*2);c.stroke();
  }else if(p.type==="blood"){
@@ -505,6 +555,8 @@ function updateUI(){
  $("skill-howl").querySelector("em").textContent=howlCd>0?("冷却 "+Math.ceil(howlCd)+"s"):"脑髓 2";
  $("skill-spore").querySelector("em").textContent=sporeCd>0?("冷却 "+Math.ceil(sporeCd)+"s"):pendingSkill==="spore"?"点击地图":"脑髓 3";
  $("skill-spore").classList.toggle("skill-pending",pendingSkill==="spore");
+ $("command-button").classList.toggle("active",commandMode);$("command-button").setAttribute("aria-pressed",commandMode?"true":"false");$("command-button").disabled=!running||paused||ended;
+ $("setting-team-highlight").checked=preferences.teamHighlight;$("setting-health-bars").checked=preferences.healthBars;
  $("selected-unit-name").textContent=UNITS[selectedUnit].name+"部署模式";
  $("selected-unit-description").textContent=UNITS[selectedUnit].desc;
  renderCampaignUI();
@@ -586,7 +638,7 @@ function setDrawerView(view){
  document.querySelectorAll("[data-drawer-view]").forEach(el=>el.classList.toggle("active-view",el===panel));
  document.querySelectorAll("[data-drawer-tab]").forEach(el=>el.classList.toggle("active",el.dataset.drawerTab===view));
  document.querySelectorAll("[data-open-drawer]").forEach(el=>el.classList.toggle("active",el.dataset.openDrawer===view));
- const titles={campaign:"全球猎食地图",nest:"尸巢核心",loot:"突变器官",log:"尸巢记录"};
+ const titles={campaign:"全球猎食地图",nest:"尸巢核心",loot:"突变器官",log:"尸巢记录",settings:"战场设置"};
  $("drawer-title").textContent=titles[view]||"巢穴管理";
 }
 function openDrawer(view){
@@ -621,6 +673,14 @@ $("launch-button").addEventListener("click",()=>{if(ended){if(endingType==="win"
 $("world").addEventListener("pointerdown",spawnAtCanvas);
 $("pause-button").addEventListener("click",()=>{if(!running||ended)return;paused=!paused;$("pause-button").textContent=paused?"▶ 继续":"Ⅱ 暂停";$("battle-state").textContent=paused?"战斗已暂停":"尸群正在猎食";});
 $("speed-button").addEventListener("click",()=>{speed=speed===1?2:1;$("speed-button").textContent="速度 ×"+speed;});
+$("command-button").addEventListener("click",()=>{
+ if(!running||paused||ended){toast("先开始并继续战斗，再下达移动指令。");return;}
+ commandMode=!commandMode;updateUI();
+ $("canvas-hint").textContent=commandMode?"指挥模式：点击地图命令尸群移动；抵达后自动恢复追猎":"选择单位，再点击地图部署；可再次点击「指挥」移动尸群";$("canvas-hint").classList.remove("fade");
+ if(commandMode)toast("指挥模式已开启：点击地图下达移动指令");
+});
+$("setting-team-highlight").addEventListener("change",e=>{preferences.teamHighlight=e.target.checked;savePreferences();drawWorld();toast(preferences.teamHighlight?"已开启敌我轮廓高亮":"已关闭敌我轮廓高亮");});
+$("setting-health-bars").addEventListener("change",e=>{preferences.healthBars=e.target.checked;savePreferences();drawWorld();toast(preferences.healthBars?"已显示单位生命条":"已隐藏单位生命条");});
 document.querySelectorAll("[data-unit]").forEach(b=>b.addEventListener("click",()=>{
  const id=b.dataset.unit;
  if(id==="brute"&&meta.upgrades.capacity===0&&stage===0){toast("先升级一次扩张巢穴，解锁重尸。");return;}
@@ -649,7 +709,7 @@ $("reset-game").addEventListener("click",()=>{
  localStorage.removeItem(STORE);meta=saveDefaults();country="nz";stage=0;difficulty=0;selectedUnit="walker";policy="feed";setupMission(true);$("event-log").innerHTML="";log("巢穴已重置。新的猎食周期开始。");toast("本地存档已重置");
 });
 document.addEventListener("visibilitychange",()=>{if(document.hidden&&running&&!ended){paused=true;$("pause-button").textContent="▶ 继续";updateUI();}});
-document.addEventListener("keydown",e=>{if(e.key==="Escape"){if($("management-drawer").classList.contains("open"))closeDrawer();if(pendingSkill){pendingSkill="";$("canvas-hint").textContent="选择下方单位，再点击地图投放尸群";toast("已取消技能瞄准。");}}});
+document.addEventListener("keydown",e=>{if(e.key==="Escape"){if($("management-drawer").classList.contains("open"))closeDrawer();if(pendingSkill){pendingSkill="";$("canvas-hint").textContent="选择单位，再点击地图部署；可再次点击「指挥」移动尸群";toast("已取消技能瞄准。");}if(commandMode){commandMode=false;updateUI();toast("已取消指挥模式。");}}});
 resizeWorld();window.addEventListener("resize",()=>{resizeWorld();drawWorld();});
 setupMission(true);renderUI();showHelpHint();requestAnimationFrame(mainLoop);
 })();
