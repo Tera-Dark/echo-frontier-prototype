@@ -849,7 +849,6 @@ $("overlay-action").addEventListener("click",()=>{
  beginMission();
 });
 $("launch-button").addEventListener("click",()=>{if(ended){if(endingType==="win"&&stage<2){stage++;setupMission(false);beginMission();}else{setupMission(false);beginMission();}}else beginMission();});
-$("world").addEventListener("pointerdown",spawnAtCanvas);
 $("pause-button").addEventListener("click",()=>{if(!running||ended)return;paused=!paused;$("pause-button").textContent=paused?"▶ 继续":"Ⅱ 暂停";$("battle-state").textContent=paused?"战斗已暂停":"尸群正在猎食";});
 $("speed-button").addEventListener("click",()=>{speed=speed===1?2:1;$("speed-button").textContent="速度 ×"+speed;});
 $("command-button").addEventListener("click",()=>{
