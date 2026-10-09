@@ -20,6 +20,7 @@
     <button class="quick-nav-button" data-open-drawer="nest" title="尸巢"><span>⌂</span><small>尸巢</small></button>
     <button class="quick-nav-button" data-open-drawer="loot" title="器官"><span>✧</span><small>器官</small></button>
     <button class="quick-nav-button" data-open-drawer="log" title="记录"><span>≡</span><small>记录</small></button>
+    <button class="quick-nav-button" data-open-drawer="settings" title="设置"><span>⚙</span><small>设置</small></button>
   </nav>
   <div class="topright">
     <span class="save-status"><i></i> 本地存档</span>
@@ -48,7 +49,7 @@
   <div class="battle-panel panel">
     <div class="battle-toolbar">
       <div class="battle-state"><span class="state-led" id="state-led"></span><strong id="battle-state">等待尸群部署</strong><small id="time-label">00:00</small></div>
-      <div class="battle-actions"><button class="mini-button" id="pause-button" disabled>Ⅱ 暂停</button><button class="mini-button" id="speed-button">速度 ×1</button></div>
+      <div class="battle-actions"><button class="mini-button command-button" id="command-button" title="指挥尸群" aria-label="指挥尸群" aria-pressed="false">⌖ <span class="command-label">指挥</span></button><button class="mini-button" id="pause-button" disabled>Ⅱ 暂停</button><button class="mini-button" id="speed-button">速度 ×1</button></div>
     </div>
     <div class="canvas-wrap" id="canvas-wrap">
       <canvas id="world" width="760" height="600" aria-label="城市战场，点击地图选择尸群部署位置"></canvas>
@@ -125,6 +126,7 @@
     <button class="drawer-tab" data-drawer-tab="nest">尸巢</button>
     <button class="drawer-tab" data-drawer-tab="loot">器官</button>
     <button class="drawer-tab" data-drawer-tab="log">记录</button>
+    <button class="drawer-tab" data-drawer-tab="settings">设置</button>
   </nav>
   <section class="panel campaign-panel" data-drawer-view="campaign">
     <div class="side-heading"><div><span class="eyebrow">GLOBAL CAMPAIGN</span><h2>全球猎食地图</h2></div><span class="world-glyph">◎</span></div>
@@ -175,6 +177,16 @@
   <section class="panel event-panel" data-drawer-view="log">
     <div class="side-heading"><div><span class="eyebrow">FIELD LOG</span><h2>尸巢记录</h2></div><button id="clear-log" class="text-button">清除</button></div>
     <div id="event-log" class="event-log"><p><i>00:00</i> 休眠巢穴已苏醒，等待首次猎食。</p></div>
+  </section>
+
+  <section class="panel settings-panel" data-drawer-view="settings">
+    <div class="side-heading"><div><span class="eyebrow">FIELD OPTIONS</span><h2>战场显示设置</h2></div><span class="world-glyph">⚙</span></div>
+    <p class="side-description">调整战场中的辨识辅助。这些偏好会保存在当前浏览器。</p>
+    <div class="setting-list">
+      <label class="setting-row"><input type="checkbox" id="setting-team-highlight" checked><span><strong>敌我轮廓高亮</strong><small>尸群显示绿色轮廓；人类目标显示琥珀色，武装单位显示红色。</small></span></label>
+      <label class="setting-row"><input type="checkbox" id="setting-health-bars" checked><span><strong>显示单位生命条</strong><small>受伤单位会显示剩余生命，关闭后画面更干净。</small></span></label>
+    </div>
+    <div class="setting-help"><strong>战场操作</strong><p>先点击「开始围猎」。选择行尸、迅猎者或重尸，再点击空地部署。点击上方「⌖ 指挥」，然后点击地图让尸群移动；抵达后会恢复自动追猎。按 Esc 可取消指挥。</p></div>
   </section>
 </aside>
 </main>
