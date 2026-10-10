@@ -51,6 +51,7 @@ const menu=document.getElementById("main-menu");
 assert.equal(menu.hidden,false,"Title screen must show before the player starts");
 assert.equal(document.getElementById("app-shell").classList.contains("menu-open"),true);
 assert.equal(document.getElementById("menu-continue").hidden,true,"Fresh browser should not show a fake save");
+assert.equal(document.querySelector("#menu-actions button:not([hidden])").id,"menu-new","No save should prioritize New Game");
 assert.equal(document.getElementById("menu-research-open").hidden,true,"Research must not appear before progression");
 document.getElementById("menu-new").click();
 assert.equal(menu.hidden,true,"New Game must enter battle without another modal");
@@ -265,6 +266,8 @@ assert.ok(JSON.parse(window.localStorage.getItem("hunger-protocol-demo-v01")).cl
 qa.openMainMenu();
 assert.equal(menu.hidden,false,"Battle must allow returning to the main menu");
 assert.equal(document.getElementById("menu-continue").hidden,false,"Existing save must enable Continue");
+assert.equal(document.querySelector("#menu-actions button:not([hidden])").id,"menu-continue","Existing save must prioritize Continue as the default action");
+assert.ok(document.getElementById("menu-continue").classList.contains("menu-primary"),"Continue must be the main call-to-action after a save exists");
 document.getElementById("menu-settings-open").click();
 assert.equal(document.getElementById("menu-settings-page").hidden,false,"Main-menu settings must be functional");
 document.querySelector("[data-menu-back]").click();
