@@ -139,5 +139,24 @@ assert.ok(source.includes("const CITY_PALETTES=") && source.includes("function d
 assert.ok((fs.readFileSync(path.join(__dirname, "..", "style.css"), "utf8").match(/\{/g) || []).length < 500, "UI rules should stay consolidated in one stylesheet");
 assert.ok(source.includes('fillText("入口",door.x,door.y+20)'), "Shelter entrance must be rendered at its actual world coordinates");
 assert.ok(source.includes("function isShelterRestricted") && source.includes("入口区域禁止投放"), "Shelter and entrance must reject deployment");
-console.log("Smoke test passed: battle startup, live movement, command order, shelter durability/blocked deployment, anchored reusable sprites, wheel zoom, drag pan, and saved settings.");
+// Regression: the previous battle's "next/map" overlay action must not leak into a fresh campaign.
+qa.finishMission(true);
+assert.equal(qa.state().endingType,"win","Forced QA win must end the encounter");
+assert.equal(document.getElementById("overlay-action").dataset.mode,"next","Stage one victory must offer progression");
+document.getElementById("overlay-action").click();
+assert.equal(qa.state().stage,1,"Next-stage action must enter stage two");
+assert.equal(qa.state().running,true,"Next-stage action must start a playable battle");
+qa.resetStage();
+assert.equal(document.getElementById("overlay-action").dataset.mode,"start","Replay must clear stale overlay action");
+document.getElementById("overlay-action").click();
+assert.equal(qa.state().running,true,"A replay must start normally without skipping a stage");
+qa.finishMission(false);
+assert.equal(document.getElementById("overlay-action").dataset.mode,"retry","Failed battle must offer retry");
+document.getElementById("overlay-action").click();
+assert.equal(qa.state().running,true,"Retry must start a new running mission");
+qa.finishMission(false);
+qa.selectCountry("pt");
+assert.equal(qa.state().country,"pt","Country switching after a battle must not call a missing UI function");
+assert.equal(document.getElementById("overlay-action").dataset.mode,"start","Selecting a country must reset overlay action");
+console.log("Smoke test passed: start, movement, A*, shelter, camera pinch, settings, victory, retry and country-switch flow.");
 dom.window.close();
