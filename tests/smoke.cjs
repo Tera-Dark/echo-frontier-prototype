@@ -33,6 +33,9 @@ let queuedFrame = null;
 window.requestAnimationFrame = callback => { queuedFrame = callback; return 1; };
 window.confirm = () => true;
 window.__HUNGER_TEST_MODE__ = true;
+for (const coreFile of ["src/core/storage.js", "src/core/clock.js"]) {
+ window.eval(fs.readFileSync(path.join(__dirname, "..", coreFile), "utf8"));
+}
 window.eval(source);
 
 const overlay = document.getElementById("battle-overlay");
@@ -85,6 +88,21 @@ const pointer = (type, x, y, button = 0) => {
 pointer("pointerdown", 850, 450);
 pointer("pointerup", 850, 450);
 assert.match(document.getElementById("toast").textContent, /移动指令/, "Map click in command mode must issue movement");
+
+// Touch gestures should zoom without turning the end of a pinch into a deployment.
+const gesturePointer = (type, id, x, y) => {
+ const event = new window.MouseEvent(type, { bubbles:true, cancelable:true, clientX:x, clientY:y, button:0 });
+ Object.defineProperty(event, "pointerId", {value:id});canvas.dispatchEvent(event);
+};
+const prePinchCount = document.getElementById("zombie-count").textContent;
+gesturePointer("pointerdown",21,500,300);
+gesturePointer("pointerdown",22,600,300);
+gesturePointer("pointermove",22,720,300);
+assert.ok(qa.state().camera.zoom>1, "Two-finger pinch should increase camera zoom");
+gesturePointer("pointerup",21,500,300);
+gesturePointer("pointerup",22,720,300);
+assert.equal(document.getElementById("zombie-count").textContent,prePinchCount,"Pinching must never accidentally deploy a zombie");
+document.getElementById("zoom-reset").click();
 
 const zoom = document.getElementById("zoom-level");
 canvas.dispatchEvent(new window.WheelEvent("wheel", { deltaY: -120, bubbles: true, cancelable: true, clientX: 640, clientY: 360 }));
