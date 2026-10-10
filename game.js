@@ -201,57 +201,21 @@ function damageBarricade(b,amount){
 }
 const shelteredCount=()=>humans.filter(h=>h.alive&&h.sheltered).length;
 function rebuildNavigation(){
- const cell=clamp(Math.min(W,H)/22,18,30),cols=Math.ceil(W/cell),rows=Math.ceil(H/cell),blocked=new Uint8Array(cols*rows);
- for(let y=0;y<rows;y++)for(let x=0;x<cols;x++){
-  const px=Math.min(W-2,x*cell+cell*.5),py=Math.min(H-2,y*cell+cell*.5);
-  blocked[y*cols+x]=isBlocked(px,py,Math.max(3,cell*.23))?1:0;
+ const cell=clamp(Math.min(W,H)/35,12,17),margin=6*worldScale();
+ const rects=buildings.map(b=>({id:b.id,x:b.x,y:b.y,w:b.w,h:b.h}));
+ for(const b of barriers)if(!b.destroyed)rects.push({id:b.id,x:b.x-b.w/2,y:b.y-b.h/2,w:b.w,h:b.h});
+ navGrid=core.createNavigator({width:W,height:H,obstacles:rects,cell,clearance:margin});
+ for(const list of [humans,zombies])for(const e of list){
+  e.path=null;e.pathIndex=0;e.pathTimer=0;e.navGoal=null;e.stuckTime=0;e.targetMemo=null;
  }
- navGrid={cell,cols,rows,blocked};
- [humans,zombies].forEach(list=>list.forEach(e=>{e.path=null;e.pathIndex=0;e.pathTimer=0;}));
 }
-function cellAt(x,y){return{cx:clamp(Math.floor(x/navGrid.cell),0,navGrid.cols-1),cy:clamp(Math.floor(y/navGrid.cell),0,navGrid.rows-1)};}
-function nearestWalkableCell(cx,cy){
- const g=navGrid;
- for(let r=0;r<10;r++)for(let dy=-r;dy<=r;dy++)for(let dx=-r;dx<=r;dx++){
-  if(Math.abs(dx)+Math.abs(dy)!==r)continue;
-  const x=cx+dx,y=cy+dy;if(x<0||x>=g.cols||y<0||y>=g.rows)continue;
-  if(!g.blocked[y*g.cols+x])return y*g.cols+x;
- }
- return -1;
-}
-function heapPush(heap,item){let i=heap.length;heap.push(item);while(i>0){const p=(i-1)>>1;if(heap[p].score<=item.score)break;heap[i]=heap[p];i=p;}heap[i]=item;}
-function heapPop(heap){const root=heap[0],last=heap.pop();if(heap.length){let i=0;while(true){let child=i*2+1;if(child>=heap.length)break;if(child+1<heap.length&&heap[child+1].score<heap[child].score)child++;if(heap[child].score>=last.score)break;heap[i]=heap[child];i=child;}heap[i]=last;}return root;}
 function findPath(sx,sy,tx,ty){
- if(!navGrid)return[];
- const g=navGrid,sp=cellAt(sx,sy),gp=cellAt(tx,ty),start=nearestWalkableCell(sp.cx,sp.cy),goal=nearestWalkableCell(gp.cx,gp.cy);
- if(start<0||goal<0)return[];if(start===goal)return[{x:tx,y:ty}];
- const n=g.cols*g.rows,cost=new Float32Array(n);cost.fill(Infinity);cost[start]=0;
- const parent=new Int32Array(n);parent.fill(-1);const closed=new Uint8Array(n),heap=[];
- const gx=goal%g.cols,gy=Math.floor(goal/g.cols),heur=id=>{const dx=Math.abs(id%g.cols-gx),dy=Math.abs(Math.floor(id/g.cols)-gy);return Math.max(dx,dy)+(Math.SQRT2-1)*Math.min(dx,dy);};
- heapPush(heap,{id:start,score:heur(start)});
- const dirs=[[-1,0,1],[1,0,1],[0,-1,1],[0,1,1],[-1,-1,Math.SQRT2],[1,-1,Math.SQRT2],[-1,1,Math.SQRT2],[1,1,Math.SQRT2]];
- let reached=false,loops=0;
- while(heap.length&&loops++<n*2){
-  const cur=heapPop(heap).id;if(closed[cur])continue;if(cur===goal){reached=true;break;}closed[cur]=1;
-  const x=cur%g.cols,y=Math.floor(cur/g.cols);
-  for(const [dx,dy,step] of dirs){
-   const nx=x+dx,ny=y+dy;if(nx<0||nx>=g.cols||ny<0||ny>=g.rows)continue;const ni=ny*g.cols+nx;
-   if(g.blocked[ni]||closed[ni])continue;
-   if(dx&&dy&&(g.blocked[y*g.cols+nx]||g.blocked[ny*g.cols+x]))continue;
-   const candidate=cost[cur]+step;if(candidate>=cost[ni])continue;cost[ni]=candidate;parent[ni]=cur;heapPush(heap,{id:ni,score:candidate+heur(ni)});
-  }
- }
- if(!reached)return[];
- const ids=[];for(let id=goal;id!==start&&id>=0;id=parent[id])ids.push(id);ids.reverse();
- const points=ids.map(id=>({x:Math.min(W-4,(id%g.cols+.5)*g.cell),y:Math.min(H-4,(Math.floor(id/g.cols)+.5)*g.cell)}));
- const last=points[points.length-1];if(last&&Math.hypot(tx-last.x,ty-last.y)>g.cell*.3&&!segmentBlocked(last.x,last.y,tx,ty))points.push({x:tx,y:ty});
- const smooth=[];let anchor={x:sx,y:sy},index=0;
- while(index<points.length){let furthest=index;for(let j=points.length-1;j>index;j--){if(!segmentBlocked(anchor.x,anchor.y,points[j].x,points[j].y)){furthest=j;break;}}smooth.push(points[furthest]);anchor=points[furthest];index=furthest+1;}
- return smooth;
+ if(!navGrid)rebuildNavigation();
+ return navGrid.findPath(sx,sy,tx,ty);
 }
 function segmentBlocked(x1,y1,x2,y2){
- const distance=Math.hypot(x2-x1,y2-y1),steps=Math.max(2,Math.ceil(distance/(navGrid?navGrid.cell*.35:10)));
- for(let i=1;i<steps;i++){const t=i/steps;if(isBlocked(x1+(x2-x1)*t,y1+(y2-y1)*t,3))return true;}return false;
+ if(!navGrid)rebuildNavigation();
+ return navGrid.rayBlocked(x1,y1,x2,y2);
 }
 function cameraPointerDown(e){
  if(![0,1,2].includes(e.button))return;
@@ -461,25 +425,64 @@ function nearestZombie(h){
  for(const z of zombies){if(!z.alive)continue;const d=dist(h,z);if(d<best){best=d;found=z;}}
  return found;
 }
-function moveEntity(e,tx,ty,speed,dt){
+function moveEntity(e,tx,ty,speed,dt,target=null){
  if(!navGrid)rebuildNavigation();
+ const radius=e.type==="brute"?8*worldScale():6*worldScale();
+ let goal={x:tx,y:ty};
+ const targetId=target?.id||(target?.kind==="shelter"?"shelter":null);
+ // Attack targets are not destinations; plan toward reachable exterior edges.
+ if(target?.kind==="barricade"||target?.kind==="shelter"){
+  const isGate=target.kind==="barricade";
+  const rect=isGate?
+   {x:target.x-target.w/2,y:target.y-target.h/2,w:target.w,h:target.h}:
+   {x:target.x-9,y:target.y-8,w:18,h:16};
+  if(!e.navGoal||e.navGoalId!==targetId||e.navGoalAge>1.2){
+   e.navGoal=navGrid.approachRect(e.x,e.y,rect,Math.max(8,radius+2));
+   e.navGoalId=targetId;e.navGoalAge=0;e.path=null;
+  }
+  e.navGoalAge=(e.navGoalAge||0)+dt;goal=e.navGoal;
+ }else{e.navGoal=null;e.navGoalId=null;e.navGoalAge=0;}
+ goal=navGrid.closestReachable(e.x,e.y,goal.x,goal.y);
  e.pathTimer=(e.pathTimer||0)-dt;
- const movedTarget=!Number.isFinite(e.pathTargetX)||Math.hypot(tx-e.pathTargetX,ty-e.pathTargetY)>navGrid.cell*1.25;
- const blocked=segmentBlocked(e.x,e.y,tx,ty);
- if(!blocked){e.path=null;e.pathIndex=0;e.pathTargetX=tx;e.pathTargetY=ty;}
- else if(!e.path||e.pathTimer<=0){
-  e.path=findPath(e.x,e.y,tx,ty);e.pathIndex=0;e.pathTargetX=tx;e.pathTargetY=ty;e.pathTimer=movedTarget?.32:.55;
+ const targetShift=!Number.isFinite(e.pathTargetX)||Math.hypot(goal.x-e.pathTargetX,goal.y-e.pathTargetY)>navGrid.cell*.85;
+ const clearPath=!navGrid.rayBlocked(e.x,e.y,goal.x,goal.y);
+ if(clearPath){e.path=null;e.pathIndex=0;}
+ else if(!e.path||e.pathTimer<=0||targetShift){
+  e.path=navGrid.findPath(e.x,e.y,goal.x,goal.y);
+  e.pathIndex=0;e.pathTargetX=goal.x;e.pathTargetY=goal.y;
+  // Stagger expensive A* recalculation; react faster to changed goals.
+  e.pathTimer=targetShift?.22:.7+(e.seed||0)%13*.013;
  }
- if(blocked&&(!e.path||!e.path.length)){e.pathTimer=Math.max(e.pathTimer,.22);return;}
- let target={x:tx,y:ty};
- if(e.path&&e.path.length){
-  while(e.pathIndex<e.path.length&&Math.hypot(e.path[e.pathIndex].x-e.x,e.path[e.pathIndex].y-e.y)<Math.max(6,navGrid.cell*.23))e.pathIndex++;
-  if(e.pathIndex<e.path.length)target=e.path[e.pathIndex];else e.path=null;
+ let dest=goal;
+ if(!clearPath&&e.path?.length){
+  while(e.pathIndex<e.path.length&&Math.hypot(e.path[e.pathIndex].x-e.x,e.path[e.pathIndex].y-e.y)<Math.max(3,navGrid.cell*.23))e.pathIndex++;
+  if(e.pathIndex<e.path.length)dest=e.path[e.pathIndex];else{e.path=null;e.pathIndex=0;}
  }
- const dx=target.x-e.x,dy=target.y-e.y,d=Math.hypot(dx,dy)||1;if(d<1.5)return;
- const step=Math.min(d,speed*dt),nx=e.x+dx/d*step,ny=e.y+dy/d*step;
- if(isBlocked(nx,ny,Math.max(3,4*worldScale()))){e.path=null;e.pathTimer=0;return;}
- const edge=8*worldScale();e.x=clamp(nx,edge,W-edge);e.y=clamp(ny,24*worldScale(),H-22*worldScale());
+ const oldX=e.x,oldY=e.y;
+ const moved=core.moveAgent(e,dest.x,dest.y,speed,dt,navGrid,{radius});
+ if(moved){
+  e.stuckTime=0;e.lastMoveX=e.x;e.lastMoveY=e.y;
+ }else if(Math.hypot(dest.x-e.x,dest.y-e.y)>4){
+  e.stuckTime=(e.stuckTime||0)+dt;
+  if(e.stuckTime>.25){e.path=null;e.pathIndex=0;e.pathTimer=0;}
+  if(e.stuckTime>.65){
+   // Escape a corner by choosing a genuinely traversable nearby waypoint.
+   const offsets=[[navGrid.cell,0],[-navGrid.cell,0],[0,navGrid.cell],[0,-navGrid.cell],
+    [navGrid.cell,navGrid.cell],[-navGrid.cell,navGrid.cell],[navGrid.cell,-navGrid.cell],[-navGrid.cell,-navGrid.cell]];
+   offsets.sort((a,b)=>{
+    const aa={x:e.x+a[0],y:e.y+a[1]},bb={x:e.x+b[0],y:e.y+b[1]};
+    return Math.hypot(aa.x-goal.x,aa.y-goal.y)-Math.hypot(bb.x-goal.x,bb.y-goal.y);
+   });
+   for(const [ox,oy] of offsets){
+    const nx=e.x+ox,ny=e.y+oy;
+    if(!navGrid.inside(nx,ny,radius)&&!navGrid.rayBlocked(e.x,e.y,nx,ny)){
+     e.path=[{x:nx,y:ny},...navGrid.findPath(nx,ny,goal.x,goal.y)];
+     e.pathIndex=0;e.stuckTime=0;e.pathTimer=.75;break;
+    }
+   }
+  }
+ }
+ return Math.hypot(e.x-oldX,e.y-oldY)>.001;
 }
 function exits(){return[{x:W-12,y:H*.5,label:"撤离"},{x:W*.5,y:H-12,label:"撤离"},{x:12,y:H*.5,label:"撤离"}];}
 function closestExit(h){let best=exits()[0],bd=Infinity;for(const e of exits()){const d=dist(h,e);if(d<bd){bd=d;best=e;}}return best;}
