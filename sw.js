@@ -1,6 +1,6 @@
 /* Network-first: Pages updates are preferred; cached assets support offline sessions. */
-const CACHE="hunger-protocol-intro-v5";
-const ASSETS=["./","./index.html","./style.css","./game.js","./src/core/storage.js","./src/core/clock.js","./src/core/progression.js","./src/render/siege-art.js","./manifest.webmanifest","./assets/icon.svg"];
+const CACHE="hunger-protocol-nav-v6";
+const ASSETS=["./","./index.html","./style.css","./game.js","./src/core/storage.js","./src/core/clock.js","./src/core/progression.js","./src/core/navigation.js","./src/render/asset-catalog.js","./src/render/siege-art.js","./manifest.webmanifest","./assets/icon.svg"];
 self.addEventListener("install",event=>{
  event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(ASSETS)).then(()=>self.skipWaiting()));
 });
