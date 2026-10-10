@@ -3,7 +3,14 @@
    replacing one with a PNG/spritesheet never changes map layout or collisions. */
 (function(root){
 "use strict";
+const SPRITE_DEFINITIONS=Object.freeze({
+ human:{frame:96,width:48,height:48,anchorX:.5,anchorY:.5},
+ zombie:{frame:96,width:48,height:48,anchorX:.5,anchorY:.5},
+ vehicle:{frame:96,width:48,height:48,anchorX:.5,anchorY:.5}
+});
 const DEFINITIONS=Object.freeze({
+ human:{category:"unit",anchor:"feet",layer:30,collider:"entity",variants:["civilian","guard","elite"],frames:2},
+ zombie:{category:"unit",anchor:"feet",layer:31,collider:"entity",variants:["walker","runner","brute","spitter"],frames:2},
  building:{category:"architecture",anchor:"footprint",layer:20,collider:"rectangle",variants:["tenement","factory","shelter"],frames:1},
  shelter:{category:"architecture",anchor:"entrance",layer:25,collider:"building",variants:["sealed","breached"],frames:1},
  barricade:{category:"obstacle",anchor:"center",layer:23,collider:"rectangle",variants:["intact","destroyed"],frames:1},
@@ -39,5 +46,5 @@ function place(id,width,height){
  return(SCENE_PROPS[id]||[]).map(a=>({...a,x:width*a.at[0],y:height*a.at[1]}));
 }
 function list(){return Object.entries(DEFINITIONS).map(([id,data])=>({id,...data}));}
-root.HungerAssets={DEFINITIONS,SCENE_PROPS,register,draw,place,list};
+root.HungerAssets={DEFINITIONS,SPRITE_DEFINITIONS,SCENE_PROPS,register,draw,place,list};
 })(typeof window!=="undefined"?window:globalThis);
