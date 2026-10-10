@@ -62,6 +62,11 @@ let country="nz",stage=0,difficulty=0,selectedUnit="walker",policy="feed";
 let humans=[],zombies=[],particles=[],floating=[],decor=[],barriers=[];
 let running=false,paused=false,ended=false,endingType="",elapsed=0,lastStamp=0,uiClock=0,saveClock=0,speed=1,howlTime=0,howlCd=0,sporeCd=0,pendingSkill="",spawnId=1,missionTime=0,neutralized=0,escaped=0,casualties=0,alert=0,commandMode=false;
 let objectiveTarget=16,toastClock=0,firstMission=true,initialOverlay=true,reinforcementCalled=false;
+const TUTORIAL_KEY="hunger-protocol-tutorial-v1";
+let tutorialActive=true,tutorialStep=0;
+try{tutorialActive=localStorage.getItem(TUTORIAL_KEY)!=="done";}catch(e){}
+const highestCleared=()=>Math.max(meta.cleared.nz||0,meta.cleared.pt||0);
+const unitUnlocked=id=>({walker:0,runner:1,brute:2,spitter:3}[id]??99)<=highestCleared();
 const simulationClock=core.createClock({step:1/30,maxSteps:8});
 let renderClock=0;
 const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
@@ -144,7 +149,7 @@ function layoutBuildings(){
 function syncShelter(reset=false){
  const building=buildings.find(b=>b.isShelter)||buildings[Math.floor(buildings.length/2)];
  shelter.building=building||null;if(!building)return;
- const oldRatio=shelter.maxHp>0?shelter.hp/shelter.maxHp:1,max=300+stage*55+difficulty*45;
+ const oldRatio=shelter.maxHp>0?shelter.hp/shelter.maxHp:1,max=180+stage*70+difficulty*40;
  shelter.maxHp=max;shelter.hp=reset?max:clamp(oldRatio*max,0,max);shelter.destroyed=reset?false:shelter.hp<=0;
  const candidates=[
   {x:building.x+building.w*.5,y:building.y+building.h+12},
@@ -157,7 +162,7 @@ function syncShelter(reset=false){
 }
 function setupBarricades(reset=true){
  const d=shelter.door,b=shelter.building;if(!b){barriers=[];return;}
- const former=barriers[0],hp=125+stage*55+difficulty*35;
+ const former=barriers[0],hp=80+stage*60+difficulty*35;
  const south=d.y>b.y+b.h,north=d.y<b.y,east=d.x>b.x+b.w,west=d.x<b.x;
  const offset=25;
  const px=clamp(d.x+(east?offset:west?-offset:0),20,W-20);
@@ -171,6 +176,7 @@ function damageBarricade(b,amount){
  particles.push({x:b.x,y:b.y,life:.35,max:.35,type:"hit"});
  if(b.hp<=0){
   b.destroyed=true;rebuildNavigation();log("外侧路障已被撕开！尸群可以继续突破入口。");toast("防线崩溃！避难所入口已暴露");
+  if(tutorialActive&&tutorialStep<=3){tutorialStep=4;refreshTutorial();}
   floating.push({x:b.x,y:b.y,text:"突破防线",life:1.5,max:1.5,color:"#e7b877"});
  }
  worldDirty=true;mapCache=null;
@@ -292,50 +298,44 @@ function resizeWorld(){
 }
 function setupMission(showOverlay=true){
  simulationClock.reset();$("overlay-action").dataset.mode="start";
- worldDirty=true;mapCache=null;resetCamera();syncShelter(true);setupBarricades(true);rebuildNavigation();
  running=false;paused=false;ended=false;endingType="";elapsed=0;missionTime=0;reinforcementCalled=false;uiClock=0;howlTime=0;howlCd=0;sporeCd=0;pendingSkill="";commandMode=false;neutralized=0;escaped=0;casualties=0;alert=0;particles=[];floating=[];zombies=[];humans=[];spawnId=1;
- const s=activeStage(),d=diff();
- const civilianCount=s.pop+d.pop+(stage?2:0);
- objectiveTarget=Math.ceil(civilianCount*(s.goal+d.goal*.12));
- const guardCount=s.guards+d.guard;
- const hotspot={x:W*.5,y:H*.48},spawnRadius=Math.min(W,H)*.29;
- for(let i=0;i<civilianCount;i++){
-  const p=freeSpotAround(hotspot.x,hotspot.y,spawnRadius);
-  humans.push({id:"h"+spawnId++,x:p.x,y:p.y,hp:16*d.hp,maxHp:16*d.hp,kind:"civilian",alive:true,sheltered:false,speed:rnd(17,22)*d.speed,attackCd:0,panic:false,infected:0,value:1,seed:rnd(0,100)});
+ resetCamera();syncShelter(true);setupBarricades(true);rebuildNavigation();worldDirty=true;mapCache=null;
+ const st=activeStage(),d=diff(),civilians=st.pop+d.pop+(stage?2:0),guards=st.guards+d.guard;
+ objectiveTarget=Math.ceil(civilians*(st.goal+d.goal*.12));
+ // The first encounter has zero undead; civilians all start protected inside.
+ for(let i=0;i<civilians;i++){
+  humans.push({id:"h"+spawnId++,x:shelter.x,y:shelter.y,hp:16*d.hp,maxHp:16*d.hp,kind:"civilian",alive:true,sheltered:true,speed:rnd(17,22)*d.speed,attackCd:0,panic:false,infected:0,value:1,seed:rnd(0,100)});
  }
- for(let i=0;i<guardCount;i++){
-  const p=freeSpotAround(shelter.door.x,shelter.door.y,85*worldScale());
-  humans.push({id:"g"+spawnId++,x:p.x,y:p.y,post:{x:p.x,y:p.y},hp:48*d.hp,maxHp:48*d.hp,kind:"guard",alive:true,speed:rnd(12,15)*d.speed,attackCd:rnd(.2,1),panic:false,infected:0,damage:8*d.hp,range:125,seed:rnd(0,100)});
+ // Only armed patrols are outdoors. Their stations are actual walkable map points.
+ for(let i=0;i<guards;i++){
+  const p=freeSpotAround(shelter.door.x,shelter.door.y,90*worldScale(),13);
+  const post=freeSpotAround(p.x,p.y,55*worldScale());
+  humans.push({id:"g"+spawnId++,x:p.x,y:p.y,post:{x:p.x,y:p.y},patrol:[{x:p.x,y:p.y},post],patrolIndex:1,hp:48*d.hp,maxHp:48*d.hp,kind:"guard",alive:true,sheltered:false,speed:rnd(12,15)*d.speed,attackCd:rnd(.2,1),panic:false,infected:0,damage:8*d.hp,range:125,seed:rnd(0,100)});
  }
  if(difficulty>=2){
-  const p=freeSpotAround(hotspot.x,hotspot.y,spawnRadius);
-  humans.push({id:"e"+spawnId++,x:p.x,y:p.y,hp:100*d.hp,maxHp:100*d.hp,kind:"elite",alive:true,speed:14*d.speed,attackCd:.6,panic:false,infected:0,damage:16*d.hp,range:155,seed:rnd(0,100)});
+  const p=freeSpotAround(shelter.door.x,shelter.door.y,90*worldScale());
+  humans.push({id:"e"+spawnId++,x:p.x,y:p.y,post:{x:p.x,y:p.y},patrol:[{x:p.x,y:p.y},freeSpotAround(p.x,p.y,55*worldScale())],patrolIndex:1,hp:100*d.hp,maxHp:100*d.hp,kind:"elite",alive:true,sheltered:false,speed:14*d.speed,attackCd:.6,panic:false,infected:0,damage:16*d.hp,range:155,seed:rnd(0,100)});
  }
- drawWorld();renderUI();renderOrgans();
+ selectedUnit=unitUnlocked(selectedUnit)?selectedUnit:"walker";
+ drawWorld();renderUI();renderOrgans();refreshTutorial();
  if(showOverlay){
   initialOverlay=true;
-  showOverlayCard("☣","FIRST CONTACT","猎食开始","在城市封锁前建立第一支尸群。选择暴食或感染策略，点击地图部署单位。","开始围猎");
- }else{
-  initialOverlay=false;$("battle-overlay").classList.add("hidden");
-  spawnStarterSquad();
- }
- log("进入 "+COUNTRIES[country].name+" / "+s.title+" · "+d.name+"。");
-}
-function spawnStarterSquad(){
- const lead=humans.find(h=>h.alive&&h.kind==="civilian")||{x:W*.5,y:H*.48};
- for(let i=0;i<4;i++){const p=freeSpotAround(lead.x,lead.y,74*worldScale(),14*worldScale());spawnZombie("walker",p.x,p.y,true);}
+  showOverlayCard("☣","OPERATION DUSK","暮色围城","幸存者都在避难所内，只有持枪巡逻兵在外面。战场初始没有僵尸：亲手投放行尸，突破路障，撕开入口，再感染幸存者。","进入战场");
+ }else{initialOverlay=false;$("battle-overlay").classList.add("hidden");}
+ log("侦察 "+COUNTRIES[country].name+" / "+st.title+" · 避难所 "+civilians+" 人，外围武装 "+(guards+(difficulty>=2?1:0))+" 名。");
 }
 function showOverlayCard(symbol,kicker,title,copy,action){
  $("overlay-symbol").textContent=symbol;$("overlay-kicker").textContent=kicker;$("overlay-title").textContent=title;$("overlay-copy").textContent=copy;$("overlay-action").innerHTML=action+' <span>↗</span>';$("battle-overlay").classList.remove("hidden");
 }
 function hideOverlay(){ $("battle-overlay").classList.add("hidden");initialOverlay=false; }
 function beginMission(){
- if(ended){setupMission(false);running=true;paused=false;elapsed=0;return;}
- if(!running){running=true;paused=false;if(zombies.length===0)spawnStarterSquad();log("猎食开始。尸群已获得猎杀授权。");toast("尸群已投放，点击地图继续部署");}
- hideOverlay();$("pause-button").disabled=false;$("state-led").classList.add("active");$("battle-state").textContent="尸群正在猎食";renderUI();
+ if(ended)setupMission(false);
+ if(!running){running=true;paused=false;log("围猎授权下达 · 尸群等待第一次人工投放。");toast("先选行尸，再点击地图空地投放");}
+ hideOverlay();$("pause-button").disabled=false;$("state-led").classList.add("active");renderUI();refreshTutorial();
 }
 function spawnZombie(type,x,y,free=false){
  const spec=UNITS[type];if(!spec)return false;
+ if(!free&&!unitUnlocked(type)){toast("该尸种尚未解锁，先推进战区。");return false;}
  const live=zombies.filter(z=>z.alive);
  if(live.length>=capacity()){toast("尸群容量已满，升级尸巢以容纳更多单位。");return false;}
  if(!free&&meta.energy<spec.cost){toast("尸能不足，需要 "+spec.cost+" 点。");return false;}
@@ -356,7 +356,7 @@ function spawnAtCanvas(evt){
  if(commandMode){commandHorde(x,y);return;}
  if(isShelterRestricted(x,y)){toast("避难所与入口区域禁止投放尸群。");return;}
  if(isBlocked(x,y,10)){toast("这里是建筑区，尸群无法从建筑内部投放。");return;}
- if(spawnZombie(selectedUnit,x,y)){toast(UNITS[selectedUnit].name+"已投放");renderUI();}
+ if(spawnZombie(selectedUnit,x,y)){toast(UNITS[selectedUnit].name+"已投放");if(tutorialActive&&tutorialStep===1){tutorialStep=2;refreshTutorial();}renderUI();}
 }
 function upgrade(kind){
  const lv=meta.upgrades[kind]||0;
@@ -383,6 +383,7 @@ function commandHorde(x,y){
  const gate=barriers.find(b=>!b.destroyed&&Math.hypot(x-b.x,y-b.y)<65*worldScale());
  if(gate){gate.focusUntil=missionTime+24;x=gate.x;y=gate.y;toast("目标锁定：优先突破避难所防线");}
  const squad=zombies.filter(z=>z.alive);
+ if(tutorialActive&&tutorialStep===2&&squad.length){tutorialStep=3;refreshTutorial();}
  if(!squad.length){commandMode=false;updateUI();toast("尸群尚未集结，先部署单位。");return;}
  if(isBlocked(x,y,10)){
   const p=freeSpotAround(x,y,65*worldScale());x=p.x;y=p.y;
@@ -432,7 +433,8 @@ function damageShelter(amount){
  if(shelter.hp<=0){
   shelter.destroyed=true;
   for(const h of humans){if(!h.alive||!h.sheltered)continue;h.sheltered=false;const p=freeSpotAround(shelter.x,shelter.y,Math.min(W,H)*.16);h.x=p.x;h.y=p.y;h.panic=true;h.path=null;h.pathTimer=0;}
-  log("人类避难所被尸群攻破！幸存者涌出。");toast("避难所已被攻破，注意涌出的幸存者！");
+  log("人类避难所被尸群攻破！幸存者涌出。");toast("避难所已被攻破！快切到感染优先收割幸存者");
+  if(tutorialActive&&tutorialStep<=4){tutorialStep=5;refreshTutorial();}
  }
  worldDirty=true;mapCache=null;
 }
