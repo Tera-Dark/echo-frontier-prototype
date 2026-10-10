@@ -9,11 +9,7 @@ const canvas=$("world");let ctx=canvas.getContext("2d");
 let mapCache=null,worldDirty=true;
 const SPRITE_CACHE=new Map();
 const SPRITE_OUTLINE_CACHE=new Map();
-const SPRITE_DEFS={
- human:{frame:96,width:48,height:48,anchorX:.5,anchorY:.5},
- zombie:{frame:96,width:48,height:48,anchorX:.5,anchorY:.5},
- vehicle:{frame:96,width:48,height:48,anchorX:.5,anchorY:.5}
-};
+const SPRITE_DEFS=window.HungerAssets.SPRITE_DEFINITIONS;
 const CITY_PALETTES={
  coast:{ground:"#3c6346",groundDark:"#2f523a",groundLight:"#4d744d",speck:"#b2bd7930",road:"#555c4a",lane:"#b8b18c40",foundation:"#344535",shadow:"#18231a90",roof:"#4c624b",roofEdge:"#293b2d",walls:["#73856a","#6e8a78","#a39b70"],wallLine:"#4b654d",highlight:"#ffffff12",window:"#243b32",windowLight:"#4c5744",door:"#354332",foliage:"#213c2b",foliageLight:"#55764b",shelter:"#293f2d",shelterEdge:"#c0e59b",shelterBar:"#b9e88c",gate:"#df6350",gateLight:"#ffe4bc",gateDark:"#9d3e35",cars:["#64788b","#9d4f45","#c3b58a"]},
  oldtown:{ground:"#6a7051",groundDark:"#576044",groundLight:"#7e805b",speck:"#c0b68a30",road:"#6c6b59",lane:"#d7c6a240",foundation:"#564d3d",shadow:"#281f1a70",roof:"#744e43",roofEdge:"#54372f",walls:["#b58b65","#ad795b","#c29a70"],wallLine:"#85644b",highlight:"#fff1d012",window:"#62513d",windowLight:"#d9d0a4",door:"#5d4035",foliage:"#3b4a2b",foliageLight:"#718050",shelter:"#493b2a",shelterEdge:"#e5bd7a",shelterBar:"#dfb56e",gate:"#df6350",gateLight:"#ffe4bc",gateDark:"#9d3e35",cars:["#ab624d","#9d4f45","#c3b58a"]}
@@ -773,7 +769,7 @@ function drawAnchoredSprite(c,sprite,x,y,scale,outlineColor,pulse,shadow={}){
 function drawHuman(h){
  if(!h.alive||h.sheltered)return;
  const civilian=h.kind==="civilian",pulse=.5+.5*Math.sin(missionTime*3.7+(h.seed||0)),frame=Math.floor(missionTime*4+(h.seed||0))%2;
- const sprite=getSprite("human:"+h.kind+":"+(civilian&&h.panic?"panic":"calm")+":"+frame,g=>art.paintHuman(g,h.kind,!!h.panic,frame),"human");
+ const sprite=getSprite("human:"+h.kind+":"+(civilian&&h.panic?"panic":"calm")+":"+frame,g=>window.HungerAssets.draw("human",g,h.kind,!!h.panic,frame),"human");
  const c=ctx,scale=worldScale();
  drawAnchoredSprite(c,sprite,h.x,h.y,scale,preferences.teamHighlight?(civilian?"#d3ad71":"#de765e"):null,pulse,{rx:5.5,ry:2,y:7});
  if(preferences.healthBars&&h.hp<h.maxHp){c.save();c.translate(h.x,h.y);c.scale(scale,scale);c.fillStyle="#121c1b";c.fillRect(-8,-18,16,2);c.fillStyle=civilian?"#d7a67a":"#df796b";c.fillRect(-8,-18,16*Math.max(0,h.hp/h.maxHp),2);c.restore();}
@@ -781,7 +777,7 @@ function drawHuman(h){
 function drawZombie(z){
  if(!z.alive)return;
  const c=ctx,r=z.type==="brute"?13:z.type==="runner"?8:z.type==="spitter"?10:8,pulse=.5+.5*Math.sin(missionTime*3.4+(z.seed||0)),frame=Math.floor(z.age*5+z.seed)%2;
- const sprite=getSprite("zombie:"+z.type+":"+(z.hitFlash>0?"hit":"normal")+":"+frame,g=>art.paintZombie(g,z.type,z.hitFlash>0,frame),"zombie");
+ const sprite=getSprite("zombie:"+z.type+":"+(z.hitFlash>0?"hit":"normal")+":"+frame,g=>window.HungerAssets.draw("zombie",g,z.type,z.hitFlash>0,frame),"zombie");
  const scale=worldScale();
  drawAnchoredSprite(c,sprite,z.x,z.y,scale,preferences.teamHighlight?"#8aceaa":null,pulse,{rx:r,ry:3,y:10,color:"#111b19a0"});
  c.save();c.translate(z.x,z.y);c.scale(scale,scale);
