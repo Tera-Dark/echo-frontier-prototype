@@ -33,15 +33,24 @@ let queuedFrame = null;
 window.requestAnimationFrame = callback => { queuedFrame = callback; return 1; };
 window.confirm = () => true;
 window.__HUNGER_TEST_MODE__ = true;
-for (const coreFile of ["src/core/storage.js", "src/core/clock.js", "src/render/siege-art.js"]) {
+for (const coreFile of ["src/core/storage.js", "src/core/clock.js", "src/core/progression.js", "src/render/siege-art.js"]) {
  window.eval(fs.readFileSync(path.join(__dirname, "..", coreFile), "utf8"));
 }
 window.eval(source);
 
 const overlay = document.getElementById("battle-overlay");
-assert.equal(overlay.classList.contains("hidden"), false, "Intro overlay should be visible at startup");
-document.getElementById("overlay-action").click();
-assert.equal(overlay.classList.contains("hidden"), true, "Start button must dismiss intro");
+const menu=document.getElementById("main-menu");
+assert.equal(menu.hidden,false,"Title screen must show before the player starts");
+assert.equal(document.getElementById("app-shell").classList.contains("menu-open"),true);
+assert.equal(document.getElementById("menu-continue").hidden,true,"Fresh browser should not show a fake save");
+assert.equal(document.getElementById("menu-research-open").hidden,true,"Research must not appear before progression");
+document.getElementById("menu-new").click();
+assert.equal(menu.hidden,true,"New Game must enter battle without another modal");
+assert.equal(overlay.classList.contains("hidden"),true,"Title screen is the only required start step");
+assert.equal(document.getElementById("app-shell").classList.contains("first-chapter"),true,"First chapter must hide later-game systems");
+assert.equal(document.getElementById("app-shell").classList.contains("reveal-biomass"),false,"Biomass must be undiscovered at start");
+assert.equal(document.getElementById("app-shell").classList.contains("has-nest"),false,"Early UI must not expose the nest");
+assert.equal(document.querySelector('[data-unit="runner"]').hidden,true,"Only walker should be shown on day one");
 assert.match(document.getElementById("battle-state").textContent, /等待玩家投放/, "Start must wait for first manual deployment");
 assert.equal(document.getElementById("pause-button").disabled, false, "Start must enable pause");
 assert.equal(document.getElementById("zombie-count").textContent,"0","Battle must start with no free zombie squad");
@@ -162,7 +171,7 @@ assert.equal(JSON.parse(window.localStorage.getItem("hunger-protocol-prefs-v1"))
 assert.ok(source.includes("function findPath") && source.includes("function rebuildNavigation"), "Grid pathfinding must be wired into movement");
 assert.ok(source.includes("const SPRITE_DEFS=") && source.includes("function getSpriteOutline") && source.includes("function drawAnchoredSprite"), "Reusable anchored sprite manager must be present");
 assert.ok(source.includes("const CITY_PALETTES=") && source.includes("art.drawScene") && source.includes("function setupBarricades") && source.includes("function damageBarricade"), "Siege rendering and interactive barricades must use shared scene and obstacle systems");
-assert.ok((fs.readFileSync(path.join(__dirname, "..", "style.css"), "utf8").match(/\{/g) || []).length < 500, "UI rules should stay consolidated in one stylesheet");
+assert.ok((fs.readFileSync(path.join(__dirname, "..", "style.css"), "utf8").match(/\{/g) || []).length < 700, "UI rules should stay bounded while the menu is introduced");
 assert.ok(window.HungerArt.drawScene&&window.HungerArt.paintZombie&&window.HungerArt.paintHuman, "Pixel art renderer must load from shared assets");
 assert.equal(document.querySelectorAll("[data-unit]").length,4,"The demo must offer four distinct infected classes");
 assert.ok(document.querySelector(".barrier-status"),"Gate durability needs on-screen feedback");
@@ -187,7 +196,16 @@ assert.match(document.getElementById("barrier-status").textContent,/防线崩溃
 // Regression: the previous battle's "next/map" overlay action must not leak into a fresh campaign.
 qa.finishMission(true);
 assert.equal(qa.state().endingType,"win","Forced QA win must end the encounter");
-assert.equal(document.querySelector('[data-unit="runner"]').disabled,false,"First clearance must unlock runner");
+assert.equal(document.querySelector('[data-unit="runner"]').hidden,false,"First clear reveals runner research");
+assert.equal(document.querySelector('[data-unit="runner"]').disabled,true,"Runner must still require paid research");
+assert.equal(document.getElementById("menu-research-open").hidden,false,"First clear must unlock research in menu");
+assert.equal(document.getElementById("app-shell").classList.contains("has-nest"),true,"Nest should appear after first clearance");
+const researchItem=document.querySelector('#menu-research-list [data-research="runner"]');
+assert.ok(researchItem,"First clear must offer a playable runner research button");
+assert.equal(researchItem.disabled,false,"First clear rewards must be sufficient to research runner");
+researchItem.click();
+assert.equal(document.querySelector('[data-unit="runner"]').disabled,false,"Runner becomes available after research");
+assert.equal(JSON.parse(window.localStorage.getItem("hunger-protocol-demo-v01")).research.runner,true,"Research purchase persists");
 assert.equal(document.getElementById("overlay-action").dataset.mode,"next","Stage one victory must offer progression");
 document.getElementById("overlay-action").click();
 assert.equal(qa.state().stage,1,"Next-stage action must enter stage two");
@@ -231,6 +249,15 @@ for(const h of victims)assert.equal(qa.convertHumanForTest(h.id),true);
 qa.stepSimulation(1/30);
 assert.equal(qa.state().endingType,"win","Meeting all real siege conditions must end the game in victory");
 assert.ok(JSON.parse(window.localStorage.getItem("hunger-protocol-demo-v01")).cleared.pt>=1,"Natural victory must persist progression");
-console.log("Smoke test passed: empty manual start, sheltered civilians, guard patrols, deploy, mission breach, real victory, gated progression, tutorial, movement, zoom.");
+qa.openMainMenu();
+assert.equal(menu.hidden,false,"Battle must allow returning to the main menu");
+assert.equal(document.getElementById("menu-continue").hidden,false,"Existing save must enable Continue");
+document.getElementById("menu-settings-open").click();
+assert.equal(document.getElementById("menu-settings-page").hidden,false,"Main-menu settings must be functional");
+document.querySelector("[data-menu-back]").click();
+assert.equal(document.getElementById("menu-settings-page").hidden,true,"Menu back navigation must work");
+document.getElementById("menu-continue").click();
+assert.equal(menu.hidden,true,"Continue must restart an accessible campaign");
+console.log("Smoke test passed: real title screen, blank-horde onboarding, progressive HUD, research purchases, legacy gameplay, full siege victory and returning to menu.");
 
 dom.window.close();
