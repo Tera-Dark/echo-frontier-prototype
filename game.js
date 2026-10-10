@@ -1011,6 +1011,20 @@ function closeDrawer(){
  $("management-drawer").classList.remove("open");
  $("drawer-backdrop").classList.remove("visible");
 }
+$("menu-new").addEventListener("click",()=>launchCampaign(true));
+$("menu-continue").addEventListener("click",()=>launchCampaign(false));
+$("menu-research-open").addEventListener("click",()=>showMenuPage("research"));
+$("menu-settings-open").addEventListener("click",()=>showMenuPage("settings"));
+document.querySelectorAll("[data-menu-back]").forEach(b=>b.addEventListener("click",()=>showMenuPage("home")));
+$("back-to-menu").addEventListener("click",openMainMenu);
+$("overlay-menu").addEventListener("click",openMainMenu);
+for(const [id,key] of [["menu-setting-team-highlight","teamHighlight"],["menu-setting-health-bars","healthBars"],["menu-setting-low-power","lowPower"]]){
+ $(id).addEventListener("change",e=>{
+  preferences[key]=e.target.checked;savePreferences();
+  if(key==="lowPower")refreshCanvasResolution();else drawWorld();
+  updateUI();
+ });
+}
 document.querySelectorAll("[data-open-drawer]").forEach(b=>b.addEventListener("click",()=>{
  const view=b.dataset.openDrawer;
  if($("management-drawer").classList.contains("open")&&document.querySelector('[data-drawer-view].active-view')?.dataset.drawerView===view){closeDrawer();return;}
@@ -1094,9 +1108,10 @@ canvas.addEventListener("contextmenu",e=>e.preventDefault());
 $("zoom-out").addEventListener("click",()=>zoomCamera(camera.zoom/1.15));
 $("zoom-in").addEventListener("click",()=>zoomCamera(camera.zoom*1.15));
 $("zoom-reset").addEventListener("click",()=>{resetCamera();drawWorld();});
-setupMission(true);renderUI();syncDockClearance();showHelpHint();requestAnimationFrame(mainLoop);
+setupMission(true);renderUI();syncDockClearance();refreshMenu();showMenuPage("home");showHelpHint();requestAnimationFrame(mainLoop);
 if(window.__HUNGER_TEST_MODE__===true){
  window.__HUNGER_TEST__={
+  menuState:()=>({menuOpen,sessionActive}),researchUnit,launchCampaign,openMainMenu,
   state:()=>({running,paused,missionTime,country,stage,difficulty,endingType,tutorialStep,tutorialActive,neutralized,escaped,objectiveTarget,barriers:barriers.map(b=>({...b})),camera:{zoom:camera.zoom,x:camera.x,y:camera.y,maxZoom:camera.maxZoom},shelter:{x:shelter.x,y:shelter.y,hp:shelter.hp,maxHp:shelter.maxHp,destroyed:shelter.destroyed,building:shelter.building?{...shelter.building}:null},buildings:buildings.map(b=>({...b})),humans:humans.map(h=>({id:h.id,x:h.x,y:h.y,alive:h.alive,sheltered:h.sheltered,kind:h.kind,patrol:!!h.patrol})),zombies:zombies.map(z=>({x:z.x,y:z.y,alive:z.alive}))}),
   findPath,segmentBlocked,damageShelter,damageBarricade:(id,amount)=>damageBarricade(barriers.find(b=>b.id===id),amount),isBlocked,finishMission,selectCountry,resetStage,stepSimulation:update,convertHumanForTest:id=>{const h=humans.find(h=>h.id===id&&h.alive&&h.kind==="civilian");if(!h||h.sheltered)return false;convertHuman(h);return true;}
  };
