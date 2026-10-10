@@ -120,6 +120,7 @@ function updateProgressiveUI(){
  root.classList.toggle("reveal-biomass",meta.discovered.biomass||clears>=1);
  root.classList.toggle("reveal-brains",meta.discovered.brains||clears>=1);
  root.classList.toggle("reveal-essence",meta.discovered.essence||clears>=2);
+ root.classList.toggle("first-chapter",clears===0);
  root.classList.toggle("has-nest",clears>=1);
  root.classList.toggle("has-strategy",clears>=1);
  root.classList.toggle("has-skills",clears>=1);
