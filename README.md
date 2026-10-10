@@ -52,7 +52,7 @@ GitHub Pages 在 CI 测试成功后**仅部署 dist/**，不会发布测试文�
 
 后续先从 game.js 中渐进拆出 simulation（战斗/AI）、render（Canvas）、ui（交互）；通过网页版回归后再增加 Capacitor 原生工程，避免一次性重写。
 
-详见 [工程架构](docs/ARCHITECTURE.md)、[美术 UI 规范](docs/ART-UI-STANDARDS.md)、[试玩验收清单](docs/PLAYTEST-CHECKLIST.md)、[游戏设计基线](docs/GAME-DESIGN.md)。
+详见 [暮色围城样板关卡](docs/DUSK-SIEGE-VERTICAL-SLICE.md)、[工程架构](docs/ARCHITECTURE.md)、[美术 UI 规范](docs/ART-UI-STANDARDS.md)、[试玩验收清单](docs/PLAYTEST-CHECKLIST.md)、[游戏设计基线](docs/GAME-DESIGN.md)。
 
 ## 限制
 
