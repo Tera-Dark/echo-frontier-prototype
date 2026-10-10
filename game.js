@@ -57,7 +57,8 @@ let preferences=core.loadPrefs(localStorage);
 let country="nz",stage=0,difficulty=0,selectedUnit="walker",policy="feed";
 let humans=[],zombies=[],particles=[],floating=[],decor=[],barriers=[];
 let running=false,paused=false,ended=false,endingType="",elapsed=0,lastStamp=0,uiClock=0,saveClock=0,speed=1,howlTime=0,howlCd=0,sporeCd=0,pendingSkill="",spawnId=1,missionTime=0,neutralized=0,escaped=0,casualties=0,alert=0,commandMode=false;
-let objectiveTarget=16,toastClock=0,firstMission=true,initialOverlay=true,reinforcementCalled=false;
+let objectiveTarget=16,toastClock=0,firstMission=true,initialOverlay=true,reinforcementCalled=false,salvage=0,zombieDeaths=0;
+const SALVAGE_CAP_BASE=18;
 const TUTORIAL_KEY="hunger-protocol-tutorial-v1";
 let tutorialActive=true,tutorialStep=0;
 try{tutorialActive=localStorage.getItem(TUTORIAL_KEY)!=="done";}catch(e){}
@@ -280,10 +281,10 @@ function resizeWorld(){
 }
 function setupMission(showOverlay=true){
  simulationClock.reset();$("overlay-action").dataset.mode="start";$("overlay-menu").hidden=true;
- running=false;paused=false;ended=false;endingType="";elapsed=0;missionTime=0;encounterStarted=false;reinforcementCalled=false;uiClock=0;howlTime=0;howlCd=0;sporeCd=0;pendingSkill="";commandMode=false;neutralized=0;escaped=0;casualties=0;alert=0;particles=[];floating=[];zombies=[];humans=[];spawnId=1;
+ running=false;paused=false;ended=false;endingType="";elapsed=0;missionTime=0;encounterStarted=false;reinforcementCalled=false;uiClock=0;howlTime=0;howlCd=0;sporeCd=0;pendingSkill="";commandMode=false;neutralized=0;escaped=0;casualties=0;alert=0;salvage=0;zombieDeaths=0;particles=[];floating=[];zombies=[];humans=[];spawnId=1;
  resetCamera();syncShelter(true);setupBarricades(true);rebuildNavigation();worldDirty=true;mapCache=null;
  const st=activeStage(),d=diff(),civilians=st.pop+d.pop+(stage?2:0),guards=st.guards+d.guard;
- objectiveTarget=Math.ceil(civilians*(st.goal+d.goal*.12));
+ objectiveTarget=civilians+guards+(difficulty>=2?1:0);
  // The first encounter has zero undead; civilians all start protected inside.
  for(let i=0;i<civilians;i++){
   humans.push({id:"h"+spawnId++,x:shelter.x,y:shelter.y,hp:16*d.hp,maxHp:16*d.hp,kind:"civilian",alive:true,sheltered:true,speed:rnd(17,22)*d.speed,attackCd:0,panic:false,infected:0,value:1,seed:rnd(0,100)});
@@ -538,6 +539,7 @@ function update(dt){
   reinforcementCalled=true;
   const p=freeSpotAround(shelter.door.x,shelter.door.y,80*worldScale());
   humans.push({id:"r"+spawnId++,x:p.x,y:p.y,post:{x:p.x,y:p.y},hp:50*diff().hp,maxHp:50*diff().hp,kind:"guard",alive:true,speed:13,attackCd:.2,panic:false,infected:0,damage:8*diff().hp,range:125,seed:rnd(0,100)});
+  objectiveTarget++;
   log("警报升级：避难所派出了增援守卫。");toast("⚠ 人类增援抵达！");
  }
  const liveZ=zombies.filter(z=>z.alive),liveH=humans.filter(h=>h.alive);
@@ -608,11 +610,10 @@ function update(dt){
  }
  particles.forEach(p=>p.life-=dt);particles=particles.filter(p=>p.life>0);
  floating.forEach(p=>{p.life-=dt;p.y-=14*dt;});floating=floating.filter(p=>p.life>0);
- if(neutralized>=objectiveTarget&&shelter.destroyed&&barriers.every(b=>b.destroyed)){finishMission(true);return;}
- if(missionTime>=(stage===2?230:195)){
-  finishMission(neutralized>=objectiveTarget&&shelter.destroyed);return;
- }
- if(aliveHumans()===0){finishMission(neutralized>=objectiveTarget&&shelter.destroyed);return;}
+ const clear=aliveHumans()===0&&escaped===0&&shelter.destroyed&&barriers.every(b=>b.destroyed);
+ if(clear){finishMission(true);return;}
+ if(missionTime>=(stage===2?230:195)){finishMission(false);return;}
+ if(aliveHumans()===0){finishMission(false);return;}
  if(shelter.destroyed&&escaped>Math.max(5,humans.filter(h=>h.kind==="civilian").length-objectiveTarget+2)){finishMission(false);return;}
  if(aliveZombies()===0&&meta.energy<12&&missionTime>25&&aliveHumans()>0){
   // Still allow energy regeneration and new deployments; no fail state here.
@@ -663,7 +664,13 @@ function convertHuman(h){
 }
 function convertSplash(h){if(!h.alive)return;if(!meta.discovered.biomass)discoverResource("biomass","感染链 · 获得生物质。");h.alive=false;neutralized++;casualties++;meta.brains++;meta.biomass+=2;if(zombies.filter(z=>z.alive).length<capacity())spawnZombie("walker",h.x,h.y,true);particles.push({x:h.x,y:h.y,life:.65,max:.65,type:"infection"});}
 function killZombie(z){
- if(!z.alive)return;z.alive=false;particles.push({x:z.x,y:z.y,life:.45,max:.45,type:"blood"});floating.push({x:z.x,y:z.y-12,text:"尸群损失",life:.8,max:.8,color:"#d77c70"});
+ if(!z.alive)return;z.alive=false;zombieDeaths++;
+ const limit=SALVAGE_CAP_BASE+stage*9;
+ const gain=Math.min(Math.max(0,limit-salvage),Math.max(1,Math.ceil(UNITS[z.type].cost*.16)));
+ salvage+=gain;
+ particles.push({x:z.x,y:z.y,life:.45,max:.45,type:"blood"});
+ floating.push({x:z.x,y:z.y-12,text:gain?"+ "+gain+" 残骸":"回收上限",life:.85,max:.85,color:"#d1b88b"});
+ if(gain&&zombieDeaths===1)log("感染体残骸可被回收。结算时兑换生物质，单局收益有上限。");
 }
 function dropOrgan(force){
  const ids=Object.keys(ORGANS);let candidates=ids.filter(id=>!organOwned(id));if(!candidates.length)candidates=ids;
@@ -675,8 +682,11 @@ function dropOrgan(force){
  renderOrgans();persist();
 }
 function finishMission(win){
- if(ended)return;ended=true;running=false;paused=false;endingType=win?"win":"fail";$("pause-button").disabled=true;$("state-led").classList.remove("active");
+ if(ended)return;
+ if(win&&(aliveHumans()>0||escaped>0||!shelter.destroyed||barriers.some(b=>!b.destroyed)))win=false;
+ ended=true;running=false;paused=false;endingType=win?"win":"fail";$("pause-button").disabled=true;$("state-led").classList.remove("active");
  const firstKey=country+":"+stage;
+ meta.biomass+=salvage;
  if(win){
   const beforeUnlock=highestCleared();
   const reward=Math.round((18+neutralized*1.35+stage*8)*diff().reward);
@@ -693,14 +703,14 @@ function finishMission(win){
   if(newlyUnlocked.length)log("感染体研究已开放："+newlyUnlocked.join("、")+"。");
   renderResearchUI();refreshMenu();
   completeTutorial();
-  showOverlayCard("☠","HUNT COMPLETE","街区已沦陷","吞噬/感染 "+neutralized+" 人，逃离 "+escaped+" 人。"+(newlyUnlocked.length?" 可研究新尸种："+newlyUnlocked.join("、")+"。":first?"首次清除奖励已发放。":"战利品已回收。"),stage<2?"继续下一街区":"返回战区");
+  showOverlayCard("☠","HUNT COMPLETE","街区已沦陷","全部 "+neutralized+" 名人类已失联，逃离 "+escaped+" 人。回收残骸 "+salvage+" 生物质。"+(newlyUnlocked.length?" 可研究新尸种："+newlyUnlocked.join("、")+"。":first?"首次清除奖励已发放。":"战利品已回收。"),stage<2?"继续下一街区":"返回战区");
   $("overlay-action").dataset.mode=stage<2?"next":"map";
   $("overlay-menu").hidden=false;
   toast("围猎完成 · 收获 "+reward+" 生物质");
  }else{
   const small=Math.round(neutralized*2);
   meta.biomass+=small;persist();log("围猎失败：目标撤离过多。尸巢仍保留本次战斗收获。");
-  showOverlayCard("⚠","HUNT FAILED","人类突破封锁","已处理 "+neutralized+" 人，仍有 "+aliveHumans()+" 名人类存活。带回部分生物质，可以调整突变后重试。","重新围猎");
+  showOverlayCard("⚠","HUNT FAILED","感染未完成","剩余 "+aliveHumans()+" 名人类，逃离 "+escaped+" 人。残骸回收 "+salvage+" 生物质；必须清除全部人类才能通关。","重新实验");
   $("overlay-action").dataset.mode="retry";
   $("overlay-menu").hidden=false;
   toast("目标逃离过多，调整部署后再试");
@@ -821,7 +831,7 @@ function updateUI(){
  $("speed-button").textContent="速度 ×"+speed;
  $("current-capacity").textContent=aliveZombies();$("max-capacity").textContent=capacity();
  const progress=clamp(neutralized/objectiveTarget,0,1);
- $("objective-meter").style.width=(progress*100)+"%";$("objective-progress").textContent="已处理 "+neutralized+" / "+objectiveTarget+" · 收容 "+shelteredCount()+" · 撤离 "+escaped;
+ $("objective-meter").style.width=(progress*100)+"%";$("objective-progress").textContent="剩余 "+aliveHumans()+" · 已转化/吞噬 "+neutralized+" / "+objectiveTarget+" · 逃离 "+escaped;
  $("nest-capacity").textContent=capacity();$("nest-regen").textContent=energyRate().toFixed(1)+"/s";$("nest-infection").textContent=Math.round(infectionChance()*100)+"%";
  $("nest-level").textContent="LV. "+(1+Object.values(meta.upgrades).reduce((a,b)=>a+b,0));
  const costs={capacity:55+meta.upgrades.capacity*42,infection:70+meta.upgrades.infection*52,energy:65+meta.upgrades.energy*48};
@@ -847,7 +857,7 @@ function renderCampaignUI(){
  $("mission-title").textContent=s.title;$("mission-summary").textContent=s.summary;
  $("mission-number").textContent=String(stage+1).padStart(2,"0");
  $("difficulty-desc").textContent=d.label;$("reward-multiplier").textContent="×"+d.reward.toFixed(1);
- $("objective-title").textContent="破门并吞噬 / 感染 "+objectiveTarget+" 名人类";
+ $("objective-title").textContent="清除全部人类 · "+objectiveTarget+" 名";
  document.querySelectorAll("[data-stage]").forEach(b=>{
   const index=Number(b.dataset.stage),unlocked=index<=(meta.cleared[country]||0);
   b.classList.toggle("active",index===stage);b.classList.toggle("locked-stage",!unlocked);
@@ -1181,7 +1191,7 @@ setupMission(true);renderUI();applyUiLayout();refreshMenu();showMenuPage("home")
 if(window.__HUNGER_TEST_MODE__===true){
  window.__HUNGER_TEST__={
   menuState:()=>({menuOpen,sessionActive}),uiLayout:()=>({...uiLayout}),researchUnit,launchCampaign,openMainMenu,
-  state:()=>({running,paused,missionTime,encounterStarted,country,stage,difficulty,endingType,tutorialStep,tutorialActive,neutralized,escaped,objectiveTarget,barriers:barriers.map(b=>({...b})),camera:{zoom:camera.zoom,x:camera.x,y:camera.y,maxZoom:camera.maxZoom},shelter:{x:shelter.x,y:shelter.y,hp:shelter.hp,maxHp:shelter.maxHp,destroyed:shelter.destroyed,building:shelter.building?{...shelter.building}:null},buildings:buildings.map(b=>({...b})),humans:humans.map(h=>({id:h.id,x:h.x,y:h.y,alive:h.alive,sheltered:h.sheltered,kind:h.kind,patrol:!!h.patrol})),zombies:zombies.map(z=>({x:z.x,y:z.y,alive:z.alive}))}),
+  state:()=>({running,paused,missionTime,encounterStarted,country,stage,difficulty,endingType,tutorialStep,tutorialActive,neutralized,escaped,objectiveTarget,salvage,zombieDeaths,barriers:barriers.map(b=>({...b})),camera:{zoom:camera.zoom,x:camera.x,y:camera.y,maxZoom:camera.maxZoom},shelter:{x:shelter.x,y:shelter.y,hp:shelter.hp,maxHp:shelter.maxHp,destroyed:shelter.destroyed,building:shelter.building?{...shelter.building}:null},buildings:buildings.map(b=>({...b})),humans:humans.map(h=>({id:h.id,x:h.x,y:h.y,alive:h.alive,sheltered:h.sheltered,kind:h.kind,patrol:!!h.patrol})),zombies:zombies.map(z=>({x:z.x,y:z.y,alive:z.alive}))}),
   findPath,segmentBlocked,damageShelter,damageBarricade:(id,amount)=>damageBarricade(barriers.find(b=>b.id===id),amount),isBlocked,finishMission,selectCountry,resetStage,stepSimulation:update,convertHumanForTest:id=>{const h=humans.find(h=>h.id===id&&h.alive&&h.kind==="civilian");if(!h||h.sheltered)return false;convertHuman(h);return true;}
  };
 }
