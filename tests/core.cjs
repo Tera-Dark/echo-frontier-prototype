@@ -1,7 +1,7 @@
 const assert=require("node:assert/strict");
 const fs=require("node:fs"),path=require("node:path"),vm=require("node:vm");
 const sandbox={window:{}};
-for(const file of ["src/core/storage.js","src/core/clock.js"]){
+for(const file of ["src/core/storage.js","src/core/clock.js","src/core/progression.js"]){
  vm.runInNewContext(fs.readFileSync(path.join(__dirname,"..",file),"utf8"),sandbox,{filename:file});
 }
 const core=sandbox.window.HungerCore;
@@ -9,10 +9,12 @@ assert.ok(core?.loadSave&&core?.createClock,"Portable game core must load");
 const map=new Map();
 const storage={getItem:k=>map.has(k)?map.get(k):null,setItem:(k,v)=>map.set(k,String(v)),removeItem:k=>map.delete(k)};
 let save=core.loadSave(storage);
-assert.equal(save.schemaVersion,2);
-assert.equal(save.biomass,80);
-assert.equal(save.brains,5);
+assert.equal(save.schemaVersion,3);
+assert.equal(save.biomass,0);
+assert.equal(save.brains,0);
 assert.equal(save.upgrades.capacity,0);
+assert.equal(save.research.runner,false,"New games should not start with advanced units");
+assert.equal(save.discovered.biomass,false,"Advanced resources must start undiscovered");
 map.set(core.SAVE_KEY,JSON.stringify({
  biomass:123.5,brains:8,energy:65,upgrades:{capacity:2,infection:1,energy:0},
  inventory:{maw:1,plague:1},equipped:["maw","maw","plague","not-real"],
@@ -23,20 +25,22 @@ assert.equal(save.biomass,123.5,"Old saves should preserve earned resources");
 assert.equal(save.upgrades.capacity,2,"Old upgrades should persist");
 assert.equal(save.equipped.length,2,"Equipment must be deduplicated");
 assert.equal(save.firstRewards.length,1,"First rewards must be validated");
+assert.equal(save.research.runner,true,"Legacy cleared stages must preserve unlocked zombie types");
+assert.equal(save.discovered.brains,true,"Legacy resources must remain visible");
 map.set(core.SAVE_KEY,'{"biomass":-10,"brains":"broken","upgrades":{"capacity":999},"inventory":{"evil":500}}');
 save=core.loadSave(storage);
 assert.equal(save.biomass,0);
-assert.equal(save.brains,5);
+assert.equal(save.brains,0);
 assert.equal(save.upgrades.capacity,5);
 assert.equal(Object.keys(save.inventory).length,0);
 map.set(core.SAVE_KEY,"{invalid JSON");
-assert.equal(core.loadSave(storage).biomass,80,"Corrupt saves must recover safely");
+assert.equal(core.loadSave(storage).biomass,0,"Corrupt saves must recover safely");
 save=core.defaultSave();
 save.biomass=999.25;
 assert.equal(core.saveSave(storage,save),true);
 assert.equal(core.loadSave(storage).biomass,999.25);
 assert.equal(core.clearSave(storage),true);
-assert.equal(core.loadSave(storage).biomass,80);
+assert.equal(core.loadSave(storage).biomass,0);
 assert.equal(core.savePrefs(storage,{teamHighlight:false,healthBars:true}),true);
 assert.equal(core.loadPrefs(storage).teamHighlight,false);
 assert.equal(core.savePrefs(storage,{teamHighlight:true,healthBars:true,lowPower:true}),true);
@@ -52,4 +56,11 @@ assert.ok(Math.abs(sum-1)<1e-8);
 clock.reset();ticks=0;
 clock.advance(.9,()=>ticks++);
 assert.equal(ticks,8,"Frame stalls must cap catch-up work");
-console.log("Core tests passed: legacy saves, corruption recovery, settings and fixed-step simulation.");
+const oldSave=core.normalizeSave({cleared:{nz:2,pt:0},biomass:155});
+assert.equal(oldSave.research.brute,true,"Legacy second-stage clear preserves brute");
+const newSave=core.defaultSave();newSave.cleared.nz=1;newSave.biomass=70;
+assert.equal(core.isAvailable(newSave,"runner"),true);
+assert.equal(core.isResearched(newSave,"runner"),false);
+assert.equal(core.canResearch(newSave,"runner"),true);
+assert.equal(core.canResearch(newSave,"brute"),false);
+console.log("Core tests passed: fresh progression, legacy migration, research gating, corruption recovery, settings and fixed-step simulation.");
