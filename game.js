@@ -949,8 +949,8 @@ $("zoom-reset").addEventListener("click",()=>{resetCamera();drawWorld();});
 setupMission(true);renderUI();showHelpHint();requestAnimationFrame(mainLoop);
 if(window.__HUNGER_TEST_MODE__===true){
  window.__HUNGER_TEST__={
-  state:()=>({running,paused,missionTime,camera:{zoom:camera.zoom,x:camera.x,y:camera.y,maxZoom:camera.maxZoom},shelter:{x:shelter.x,y:shelter.y,hp:shelter.hp,maxHp:shelter.maxHp,destroyed:shelter.destroyed,building:shelter.building?{...shelter.building}:null},buildings:buildings.map(b=>({...b})),humans:humans.map(h=>({x:h.x,y:h.y,alive:h.alive,sheltered:h.sheltered})),zombies:zombies.map(z=>({x:z.x,y:z.y,alive:z.alive}))}),
-  findPath,segmentBlocked,damageShelter,isBlocked
+  state:()=>({running,paused,missionTime,country,stage,difficulty,endingType,camera:{zoom:camera.zoom,x:camera.x,y:camera.y,maxZoom:camera.maxZoom},shelter:{x:shelter.x,y:shelter.y,hp:shelter.hp,maxHp:shelter.maxHp,destroyed:shelter.destroyed,building:shelter.building?{...shelter.building}:null},buildings:buildings.map(b=>({...b})),humans:humans.map(h=>({x:h.x,y:h.y,alive:h.alive,sheltered:h.sheltered})),zombies:zombies.map(z=>({x:z.x,y:z.y,alive:z.alive}))}),
+  findPath,segmentBlocked,damageShelter,isBlocked,finishMission,selectCountry,resetStage
  };
 }
 })();
