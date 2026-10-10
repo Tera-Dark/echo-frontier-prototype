@@ -39,6 +39,8 @@ assert.equal(core.clearSave(storage),true);
 assert.equal(core.loadSave(storage).biomass,80);
 assert.equal(core.savePrefs(storage,{teamHighlight:false,healthBars:true}),true);
 assert.equal(core.loadPrefs(storage).teamHighlight,false);
+assert.equal(core.savePrefs(storage,{teamHighlight:true,healthBars:true,lowPower:true}),true);
+assert.equal(core.loadPrefs(storage).lowPower,true);
 const blockedStorage={getItem(){throw Error("blocked")},setItem(){throw Error("blocked")},removeItem(){throw Error("blocked")}};
 assert.equal(core.loadSave(blockedStorage).energy,100,"Private/denied storage must not crash game");
 assert.equal(core.saveSave(blockedStorage,save),false);
