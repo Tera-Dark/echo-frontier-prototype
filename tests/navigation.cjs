@@ -38,4 +38,6 @@ const asset=cat.window.HungerAssets;
 assert.ok(asset.list().length>=8,"Scenery must have a central reusable catalog");
 assert.equal(asset.place("vehicle",800,600).length,3);
 assert.equal(asset.DEFINITIONS.building.collider,"rectangle","Art footprint must specify physical collision intent");
+assert.equal(asset.SPRITE_DEFINITIONS.zombie.width,48,"Sprite physical size must have one registry source");
+assert.ok(asset.list().some(x=>x.id==="human")&&asset.list().some(x=>x.id==="zombie"),"Characters must be cataloged alongside scenery");
 console.log("Navigation tests passed: geometry clearance, smoothed corner crossing, barricade approaches, unreachable wall, open terrain and asset catalog.");
