@@ -45,7 +45,7 @@ assert.equal(overlay.classList.contains("hidden"), true, "Start button must dism
 assert.match(document.getElementById("battle-state").textContent, /等待玩家投放/, "Start must wait for first manual deployment");
 assert.equal(document.getElementById("pause-button").disabled, false, "Start must enable pause");
 assert.equal(document.getElementById("zombie-count").textContent,"0","Battle must start with no free zombie squad");
-assert.match(document.getElementById("shelter-hp").textContent, /300/, "Shelter durability must initialize");
+assert.match(document.getElementById("shelter-hp").textContent, /180/, "The first shelter must use beginner-friendly durability");
 const qa = window.__HUNGER_TEST__;
 assert.ok(qa, "Test hooks must be available when explicitly enabled");
 const canvas = document.getElementById("world");
