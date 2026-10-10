@@ -332,12 +332,78 @@ function spawnZombie(type,x,y,free=false){
  floating.push({x:p.x,y:p.y-14,text:free?"集结":("-"+spec.cost+" ϟ"),life:.9,max:.9,color:free?"#c6dfa0":"#b7d77b"});
  meta.mutations++;persist();return true;
 }
+function deployRandomZombie(){
+ if(!running||paused||ended){toast(ended?"请开始下一次实验":"请先从主菜单进入战场");return false;}
+ if(!navGrid)rebuildNavigation();
+ const active=humans.filter(h=>h.alive&&!h.sheltered);
+ const gate=barriers.find(b=>!b.destroyed);
+ const anchors=[...active.map(h=>({x:h.x,y:h.y})),...(gate?[{x:gate.x,y:gate.y}]:[]),shelter.door];
+ let chosen=null,score=Infinity;
+ for(let i=0;i<60;i++){
+  const anchor=anchors[Math.floor(Math.random()*anchors.length)];
+  const angle=Math.random()*Math.PI*2,radius=(70+Math.random()*110)*worldScale();
+  const p={x:clamp(anchor.x+Math.cos(angle)*radius,22,W-22),y:clamp(anchor.y+Math.sin(angle)*radius,35,H-35)};
+  if(isBlocked(p.x,p.y,12)||isShelterRestricted(p.x,p.y)||navGrid.inside(p.x,p.y))continue;
+  if(zombies.some(z=>z.alive&&dist(z,p)<18*worldScale()))continue;
+  const closest=active.length?Math.min(...active.map(h=>dist(h,p))):dist(p,shelter.door);
+  if(closest<46*worldScale())continue;
+  const approach=gate?navGrid.approachRect(p.x,p.y,{x:gate.x-gate.w/2,y:gate.y-gate.h/2,w:gate.w,h:gate.h},9):shelter.door;
+  const route=navGrid.findPath(p.x,p.y,approach.x,approach.y);
+  if(!route.length)continue;
+  const balance=Math.abs(closest-100*worldScale())+Math.random()*35;
+  if(balance<score){score=balance;chosen=p;}
+  if(score<17)break;
+ }
+ if(!chosen){
+  const fallback=freeSpot(18);
+  chosen=navGrid.closestReachable(W/2,H/2,fallback.x,fallback.y);
+ }
+ const result=spawnZombie(selectedUnit,chosen.x,chosen.y);
+ if(result){
+  if(tutorialActive&&tutorialStep<=1){tutorialStep=2;refreshTutorial();}
+  particles.push({x:chosen.x,y:chosen.y,life:.9,max:.9,type:"command",radius:38});
+  toast(UNITS[selectedUnit].name+"已随机部署 · 监控画面正在追踪");
+  renderUI();
+ }
+ return result;
+}
+let lastMonitorUnitKey="";
+function updateMonitorUI(){
+ const remaining=aliveHumans(),livingZ=aliveZombies();
+ $("monitor-human-count").textContent=remaining;
+ $("monitor-zombie-count").textContent=livingZ;
+ $("monitor-salvage-count").textContent=salvage+" / "+(SALVAGE_CAP_BASE+stage*9);
+ $("monitor-energy-count").textContent=Math.floor(meta.energy);
+ $("monitor-stage-name").textContent=activeStage().title;
+ const phase=ended?(endingType==="win"?"感染完成":"实验失败"):shelter.destroyed?"避难所沦陷":barriers.every(b=>b.destroyed)?"外围突破":encounterStarted?"感染扩散":"等待投放";
+ $("monitor-phase").textContent=phase;
+ const msg=ended?endingType==="win"?"全部人类失联。返回控制室研究新的感染体。":"实验失败：尚有幸存者或人员逃脱。回收资源再试。":
+  !encounterStarted?"投放第一只行尸，观察持枪人类的应对。":
+  !barriers.every(b=>b.destroyed)?"观察枪械防线。损失的僵尸会回收残骸，持续投入可能使防线崩溃。":
+  !shelter.destroyed?"外围防线已破，正在攻击庇护所入口。":
+  remaining>0?"避难所失守；还有 "+remaining+" 名人类未被清除。":"没有人类信号。";
+ $("monitor-message").textContent=msg;
+ const btn=$("monitor-deploy"),cost=UNITS[selectedUnit].cost;
+ $("monitor-deploy-cost").textContent="ϟ "+cost;
+ btn.disabled=!running||paused||ended||meta.energy<cost||aliveZombies()>=capacity();
+ btn.title=btn.disabled&&meta.energy<cost?"尸能恢复中，请观察战场":UNITS[selectedUnit].desc;
+ const available=Object.keys(UNITS).filter(id=>unitUnlocked(id));
+ const key=available.join("|");
+ if(key!==lastMonitorUnitKey){
+  lastMonitorUnitKey=key;
+  const select=$("monitor-unit-select");select.replaceChildren();
+  for(const id of available){const item=document.createElement("option");item.value=id;item.textContent=UNITS[id].name;select.append(item);}
+ }
+ $("monitor-unit-select").value=selectedUnit;
+ $("monitor-research").disabled=core.clearCount(meta)<1;
+}
 function spawnAtCanvas(evt){
  if(!running||paused||ended){toast(ended?"先进入下一场猎食。":"先点击“开始围猎”启动战斗。");return;}
  const p=screenToWorld(evt),x=p.x,y=p.y;
  if(x<0||x>W||y<0||y>H){toast("这里超出地图边界。");return;}
  if(pendingSkill==="spore"){castSpore(x,y);return;}
  if(commandMode){commandHorde(x,y);return;}
+ if($("app-shell").classList.contains("monitor-mode")){toast("观察模式：请使用控制台的「随机投放」按钮");return;}
  if(isShelterRestricted(x,y)){toast("避难所与入口区域禁止投放尸群。");return;}
  if(isBlocked(x,y,10)){toast("这里是建筑区，尸群无法从建筑内部投放。");return;}
  if(spawnZombie(selectedUnit,x,y)){toast(UNITS[selectedUnit].name+"已投放");if(tutorialActive&&tutorialStep===1){tutorialStep=2;refreshTutorial();}renderUI();}
@@ -612,7 +678,7 @@ function update(dt){
  floating.forEach(p=>{p.life-=dt;p.y-=14*dt;});floating=floating.filter(p=>p.life>0);
  const clear=aliveHumans()===0&&escaped===0&&shelter.destroyed&&barriers.every(b=>b.destroyed);
  if(clear){finishMission(true);return;}
- if(missionTime>=(stage===2?230:195)){finishMission(false);return;}
+ if(missionTime>=(stage===2?470:370)){finishMission(false);return;}
  if(aliveHumans()===0){finishMission(false);return;}
  if(shelter.destroyed&&escaped>Math.max(5,humans.filter(h=>h.kind==="civilian").length-objectiveTarget+2)){finishMission(false);return;}
  if(aliveZombies()===0&&meta.energy<12&&missionTime>25&&aliveHumans()>0){
@@ -815,7 +881,7 @@ function drawParticle(p){
 }
 function drawFloat(p){ctx.save();ctx.globalAlpha=clamp(p.life/p.max,0,1);ctx.textAlign="center";ctx.font="bold 11px system-ui";ctx.fillStyle=p.color;ctx.shadowColor="#071007";ctx.shadowBlur=4;ctx.fillText(p.text,p.x,p.y);ctx.restore();}
 function updateUI(){
- updateProgressiveUI();
+ updateProgressiveUI();updateMonitorUI();
  $("energy-value").innerHTML=Math.floor(meta.energy)+' <i>/ '+energyMax()+'</i>';$("energy-meter").style.width=(meta.energy/energyMax()*100)+"%";
  $("biomass-value").textContent=Math.floor(meta.biomass);$("biomass-meter").style.width=(meta.biomass/(meta.biomass+100)*100)+"%";
  $("brains-value").textContent=Math.floor(meta.brains);$("brains-meter").style.width=Math.min(100,meta.brains*8)+"%";
@@ -1089,6 +1155,9 @@ function closeDrawer(){
  $("management-drawer").classList.remove("open");
  $("drawer-backdrop").classList.remove("visible");
 }
+$("monitor-deploy").addEventListener("click",deployRandomZombie);
+$("monitor-unit-select").addEventListener("change",e=>{if(UNITS[e.target.value]&&unitUnlocked(e.target.value)){selectedUnit=e.target.value;renderUI();}});
+$("monitor-research").addEventListener("click",()=>{openMainMenu();showMenuPage("research");});
 $("menu-new").addEventListener("click",()=>launchCampaign(true));
 $("menu-continue").addEventListener("click",()=>launchCampaign(false));
 $("menu-research-open").addEventListener("click",()=>showMenuPage("research"));
@@ -1190,7 +1259,7 @@ $("zoom-reset").addEventListener("click",()=>{resetCamera();drawWorld();});
 setupMission(true);renderUI();applyUiLayout();refreshMenu();showMenuPage("home");showHelpHint();requestAnimationFrame(mainLoop);
 if(window.__HUNGER_TEST_MODE__===true){
  window.__HUNGER_TEST__={
-  menuState:()=>({menuOpen,sessionActive}),uiLayout:()=>({...uiLayout}),researchUnit,launchCampaign,openMainMenu,
+  deployRandomZombie,menuState:()=>({menuOpen,sessionActive}),uiLayout:()=>({...uiLayout}),researchUnit,launchCampaign,openMainMenu,
   state:()=>({running,paused,missionTime,encounterStarted,country,stage,difficulty,endingType,tutorialStep,tutorialActive,neutralized,escaped,objectiveTarget,salvage,zombieDeaths,barriers:barriers.map(b=>({...b})),camera:{zoom:camera.zoom,x:camera.x,y:camera.y,maxZoom:camera.maxZoom},shelter:{x:shelter.x,y:shelter.y,hp:shelter.hp,maxHp:shelter.maxHp,destroyed:shelter.destroyed,building:shelter.building?{...shelter.building}:null},buildings:buildings.map(b=>({...b})),humans:humans.map(h=>({id:h.id,x:h.x,y:h.y,alive:h.alive,sheltered:h.sheltered,kind:h.kind,patrol:!!h.patrol})),zombies:zombies.map(z=>({x:z.x,y:z.y,alive:z.alive}))}),
   findPath,segmentBlocked,damageShelter,damageBarricade:(id,amount)=>damageBarricade(barriers.find(b=>b.id===id),amount),isBlocked,finishMission,selectCountry,resetStage,stepSimulation:update,convertHumanForTest:id=>{const h=humans.find(h=>h.id===id&&h.alive&&h.kind==="civilian");if(!h||h.sheltered)return false;convertHuman(h);return true;}
  };
