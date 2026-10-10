@@ -211,5 +211,26 @@ assert.equal(document.getElementById("tutorial-card").hidden,false,"Help should 
 document.getElementById("tutorial-skip").click();
 assert.equal(document.getElementById("tutorial-card").hidden,true,"Skipping tutorial hides the banner");
 assert.equal(window.localStorage.getItem("hunger-protocol-tutorial-v1"),"done","Tutorial completion must persist");
-console.log("Smoke test passed: start, movement, A*, shelter, camera pinch, settings, victory, retry and country-switch flow.");
+// Complete the real victory condition without calling finishMission directly.
+// Civilians are untouchable before breaching the shelter.
+qa.resetStage();
+document.getElementById("overlay-action").click();
+let fullSiege=qa.state();
+const protectedCivilian=fullSiege.humans.find(h=>h.kind==="civilian");
+assert.ok(protectedCivilian?.sheltered,"Replay must initially protect every civilian");
+assert.equal(qa.convertHumanForTest(protectedCivilian.id),false,"Protected civilians cannot be infected through walls");
+const firstGate=fullSiege.barriers[0];
+qa.damageBarricade(firstGate.id,firstGate.hp);
+assert.equal(qa.state().barriers[0].destroyed,true);
+qa.damageShelter(qa.state().shelter.hp);
+assert.ok(qa.state().humans.filter(h=>h.kind==="civilian").every(h=>!h.sheltered),"Destroying shelter must expose all civilians");
+const target=qa.state().objectiveTarget;
+const victims=qa.state().humans.filter(h=>h.kind==="civilian").slice(0,target);
+assert.ok(victims.length>=target,"Enough survivors must spawn to complete objective");
+for(const h of victims)assert.equal(qa.convertHumanForTest(h.id),true);
+qa.stepSimulation(1/30);
+assert.equal(qa.state().endingType,"win","Meeting all real siege conditions must end the game in victory");
+assert.ok(JSON.parse(window.localStorage.getItem("hunger-protocol-demo-v01")).cleared.pt>=1,"Natural victory must persist progression");
+console.log("Smoke test passed: empty manual start, sheltered civilians, guard patrols, deploy, mission breach, real victory, gated progression, tutorial, movement, zoom.");
+
 dom.window.close();
