@@ -372,10 +372,12 @@ function commandHorde(x,y){
   const p=freeSpotAround(x,y,65*worldScale());x=p.x;y=p.y;
  }
  const radius=Math.min(46,13+squad.length*2.2)*worldScale();
+ if(!navGrid)rebuildNavigation();
  squad.forEach((z,i)=>{
   const angle=i*2.399963;
   const ring=Math.sqrt((i+.25)/Math.max(1,squad.length))*radius;
-  z.moveOrder={x:clamp(x+Math.cos(angle)*ring,18,W-18),y:clamp(y+Math.sin(angle)*ring,28,H-28)};
+  const preferred=navGrid.closestReachable(z.x,z.y,clamp(x+Math.cos(angle)*ring,18,W-18),clamp(y+Math.sin(angle)*ring,28,H-28));
+  z.moveOrder=preferred;z.path=null;z.pathTimer=0;z.targetMemo=null;
  });
  particles.push({x,y,life:.85,max:.85,type:"command",radius:32*worldScale()});
  commandMode=false;updateUI();
@@ -395,18 +397,42 @@ function castSpore(x,y){
  log("感染脉冲释放，影响 "+affected+" 名人类。");toast("感染脉冲命中 "+affected+" 名目标。");renderUI();persist();
 }
 function nearestTarget(z){
- let found=null,best=Infinity;
- for(const h of humans){if(!h.alive||h.sheltered)continue;const d=dist(z,h);if(d<best){best=d;found=h;}}
+ const cache=z.targetMemo;
+ if(cache&&missionTime<z.targetUntil&&
+    (cache.kind==="shelter"?!shelter.destroyed&&shelteredCount()>0:
+     cache.kind==="barricade"?!cache.destroyed:cache.alive&&!cache.sheltered))return cache;
+ z.targetUntil=missionTime+.55+(z.seed||0)%29*.013;
+ const candidates=[];
+ for(const h of humans)if(h.alive&&!h.sheltered){
+  const range=dist(z,h);candidates.push({target:h,range,priority:1});
+ }
+ candidates.sort((a,b)=>a.range-b.range);
+ // Candidate shortlist avoids A* for every nearby human on every frame.
+ const shortlist=candidates.slice(0,4);
  const barrier=barriers.find(b=>!b.destroyed);
  if(barrier){
   const d=dist(z,barrier);
-  if(d<Math.max(310,Math.min(W,H)*.86)&&(d<best*2||!found)){found=barrier;best=d;}
+  if(d<Math.max(340,Math.min(W,H)*.88)&&(!shortlist.length||d<shortlist[0].range*2.2))
+   shortlist.push({target:barrier,range:d,priority:.85});
+ }else if(!shelter.destroyed&&shelter.hp>0&&shelteredCount()>0){
+  shortlist.push({target:shelter,range:dist(z,shelter),priority:.85});
  }
- if(!barrier&&!shelter.destroyed&&shelter.hp>0&&shelteredCount()>0){
-  const d=dist(z,shelter);
-  if(d<best*2||!found){found=shelter;best=d;}
+ let chosen=null,best=Infinity;
+ for(const candidate of shortlist){
+  const t=candidate.target;let end={x:t.x,y:t.y};
+  if(t.kind==="barricade")end=navGrid.approachRect(z.x,z.y,{x:t.x-t.w/2,y:t.y-t.h/2,w:t.w,h:t.h},8);
+  if(t.kind==="shelter")end=navGrid.approachRect(z.x,z.y,{x:t.x-9,y:t.y-8,w:18,h:16},8);
+  let travel=Math.hypot(end.x-z.x,end.y-z.y);
+  if(segmentBlocked(z.x,z.y,end.x,end.y)){
+   const path=findPath(z.x,z.y,end.x,end.y);
+   if(!path.length)continue;
+   let prev=z;travel=0;for(const p of path){travel+=Math.hypot(p.x-prev.x,p.y-prev.y);prev=p;}
+  }
+  const score=travel*candidate.priority;
+  if(score<best){best=score;chosen=t;}
  }
- return found;
+ z.targetMemo=chosen;
+ return chosen;
 }
 function damageShelter(amount){
  if(shelter.destroyed||shelter.hp<=0)return;
@@ -533,7 +559,7 @@ function update(dt){
   if(!z.alive)continue;
   z.age+=dt;z.attackCd-=dt;z.hitFlash=Math.max(0,z.hitFlash-dt);
   if(z.moveOrder){
-   if(dist(z,z.moveOrder)>9*worldScale()){
+   if(dist(z,z.moveOrder)>Math.max(7,navGrid.cell*.42)){
     moveEntity(z,z.moveOrder.x,z.moveOrder.y,z.speed*(howlTime>0?1.75:1)*worldScale(),dt);continue;
    }
    z.moveOrder=null;
@@ -561,7 +587,7 @@ function update(dt){
    }
   }else{
    const speed=z.speed*(howlTime>0?1.75:1)*(z.type==="runner"&&target.panic?1.22:1)*1.18*worldScale();
-   moveEntity(z,target.x,target.y,speed,dt);
+   moveEntity(z,target.x,target.y,speed,dt,target);
   }
  }
  particles.forEach(p=>p.life-=dt);particles=particles.filter(p=>p.life>0);
