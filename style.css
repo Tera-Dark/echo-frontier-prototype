@@ -624,3 +624,58 @@ button:disabled:hover{transform:none;box-shadow:none}
  .menu-story{margin:10px 0}
  .menu-footnote{margin-top:8px}
 }
+
+
+/* 0.6 Responsive battlefield chrome — never hide deployment itself. */
+.dock-toggle{position:absolute;top:-25px;left:50%;transform:translateX(-50%);z-index:2;display:flex;align-items:center;justify-content:center;gap:5px;min-width:94px;min-height:27px;padding:3px 12px;border:1px solid var(--line-strong);border-bottom:0;border-radius:9px 9px 0 0;background:rgba(12,20,16,.94);color:#c0d6b3;font-size:13px;cursor:pointer}
+.dock-toggle small{font-size:9px;letter-spacing:.03em}
+.dock-toggle:hover,.objective-toggle:hover,.hud-toggle:hover{color:#e8f7dc;background:#2a3b30}
+.objective-toggle{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;min-height:26px;padding:2px 3px;border:0;background:transparent;color:#a6c99a;font-size:10px;cursor:pointer}
+.objective-toggle span,.dock-toggle span{display:inline-block;transition:transform .2s}
+.app-shell.dock-collapsed .dock-toggle span,.app-shell.objective-collapsed .objective-toggle span{transform:rotate(180deg)}
+.app-shell.dock-collapsed .bottom-dock{width:min(610px,calc(100% - 24px));grid-template-columns:minmax(0,1fr);gap:0;padding:4px 8px;border-radius:10px}
+.app-shell.dock-collapsed .bottom-dock .section-heading,
+.app-shell.dock-collapsed .bottom-dock .policy-row,
+.app-shell.dock-collapsed .bottom-dock .command-row,
+.app-shell.dock-collapsed .bottom-dock .skill-section{display:none}
+.app-shell.dock-collapsed .unit-grid{display:flex;flex-wrap:nowrap;gap:5px}
+.app-shell.dock-collapsed .unit-card:not([hidden]){display:flex;flex:1 1 0;min-width:0;min-height:38px;padding:4px 6px}
+.app-shell.dock-collapsed .unit-card .unit-copy>small{display:none}
+.app-shell.dock-collapsed .unit-card .unit-art{transform:scale(.78);transform-origin:center}
+.app-shell.dock-collapsed .unit-card .unit-copy>strong{font-size:10px;line-height:1}
+.app-shell.dock-collapsed .unit-card .unit-copy em{font-size:9px}
+.app-shell.objective-collapsed .battle-footer{width:min(230px,38vw);padding:4px 9px}
+.app-shell.objective-collapsed .objective-track,
+.app-shell.objective-collapsed .objective-progress,
+.app-shell.objective-collapsed #objective-progress,
+.app-shell.objective-collapsed #barrier-status,
+.app-shell.objective-collapsed .objective{display:none}
+.app-shell.hud-collapsed .mission-header,
+.app-shell.hud-collapsed .world-hud{display:none}
+.app-shell.hud-collapsed .resource-strip .resource-cell:not(.energy-resource){display:none}
+.app-shell.hud-collapsed .resource-strip{grid-template-columns:minmax(0,1fr);width:136px}
+.hud-toggle{min-width:57px;min-height:32px;padding:5px 8px;color:#b6d09d;border:1px solid #677b5f6b}
+.app-shell.first-chapter.dock-collapsed .bottom-dock{width:min(240px,calc(100% - 24px));padding:4px 8px}
+.app-shell.first-chapter.dock-collapsed .unit-card{min-height:43px}
+.app-shell.dock-collapsed .battle-footer{bottom:calc(env(safe-area-inset-bottom) + var(--dock-clearance,65px))}
+#world{touch-action:none}
+@media(max-width:760px){
+ .topright{gap:4px}
+ .hud-toggle{min-width:33px;font-size:10px;padding:4px 5px}
+ .dock-toggle{min-height:32px;top:-30px;padding:5px 12px}
+ .objective-toggle{min-height:29px}
+ .app-shell.dock-collapsed .bottom-dock{left:50%;right:auto;bottom:calc(env(safe-area-inset-bottom) + 6px);width:min(460px,calc(100% - 18px));display:block;transform:translateX(-50%);padding:6px 7px}
+ .app-shell.dock-collapsed .unit-grid{display:flex;gap:4px}
+ .app-shell.dock-collapsed .unit-card:not([hidden]){min-height:43px;min-width:0;padding:3px;flex:1 1 0}
+ .app-shell.dock-collapsed .unit-card .unit-copy>strong{font-size:9px}
+ .app-shell.dock-collapsed .battle-footer{bottom:calc(env(safe-area-inset-bottom) + var(--dock-clearance,65px))}
+ .app-shell.objective-collapsed .battle-footer{width:min(180px,44vw);padding:3px 6px}
+ .app-shell.objective-collapsed .objective-toggle{font-size:9px}
+ .app-shell.first-chapter.dock-collapsed .bottom-dock{width:min(220px,calc(100% - 14px))}
+}
+@media(max-width:390px){
+ .hud-toggle{font-size:0;min-width:32px}
+ .hud-toggle:after{content:"◫";font-size:16px}
+ .app-shell.dock-collapsed .unit-card .unit-art{display:none}
+ .app-shell.dock-collapsed .unit-card .unit-copy em{font-size:8px}
+}
