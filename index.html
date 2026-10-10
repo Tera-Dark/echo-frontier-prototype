@@ -14,14 +14,14 @@
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<div class="app-shell menu-open" id="app-shell">
+<div class="app-shell menu-open monitor-mode" id="app-shell">
   <section class="main-menu" id="main-menu" aria-label="Hunger Protocol 开始菜单">
     <div class="menu-backdrop" aria-hidden="true">
       <span class="menu-city menu-city-one"></span><span class="menu-city menu-city-two"></span><span class="menu-city menu-city-three"></span>
       <span class="menu-horizon"></span><span class="menu-warning">QUARANTINE ZONE / 00</span>
     </div>
     <div class="menu-content">
-      <div class="menu-brandline"><span class="menu-emblem">☣</span><span>HUNGER PROTOCOL <b>DEMO 0.6</b></span></div>
+      <div class="menu-brandline"><span class="menu-emblem">☣</span><span>HUNGER PROTOCOL <b>DEMO 0.7</b></span></div>
       <h1 class="menu-title">尸潮<span>纪元</span></h1>
       <p class="menu-tagline">人类筑起最后的高墙。你，是墙外的饥饿。</p>
       <div class="menu-story"><span id="menu-story-kicker">序章 · 零号信号</span><strong id="menu-story-title">第一声饥饿</strong><p id="menu-story-copy">雨后的南湾，某种意识刚刚苏醒。</p></div>
@@ -49,7 +49,7 @@
 <header class="topbar">
   <a class="brand" href="#" aria-label="尸潮纪元">
     <span class="brand-mark"><i></i><i></i><i></i></span>
-    <span class="brand-copy"><strong>尸潮纪元</strong><small>HUNGER PROTOCOL <b>DEMO 0.6</b></small></span>
+    <span class="brand-copy"><strong>尸潮纪元</strong><small>HUNGER PROTOCOL <b>DEMO 0.7</b></small></span>
   </a>
   <nav class="quick-nav" aria-label="游戏面板">
     <button class="quick-nav-button active" data-open-drawer="campaign" title="战区"><span>◎</span><small>战区</small></button>
@@ -88,7 +88,10 @@
       <div class="battle-actions"><button class="mini-button command-button" id="command-button" title="指挥尸群：点击路障可集中突破" aria-label="指挥尸群" aria-pressed="false">⌖ <span class="command-label">指挥</span></button><button class="mini-button" id="pause-button" disabled>Ⅱ 暂停</button><button class="mini-button" id="speed-button">速度 ×1</button></div>
     </div>
     <div class="canvas-wrap" id="canvas-wrap">
-      <canvas id="world" width="760" height="600" aria-label="城市战场，点击地图选择尸群部署位置"></canvas>
+      <canvas id="world" width="760" height="600" aria-label="感染实验监控画面。按下方投放按钮，观察僵尸自动追猎人类"></canvas>
+      <div class="monitor-glass" aria-hidden="true"></div>
+      <div class="monitor-camera-label" aria-hidden="true"><span class="monitor-red-dot"></span> REC · CAM-01 <small>感染观察区 / LIVE</small></div>
+      <div class="monitor-time-label" aria-hidden="true">HUNGER PROTOCOL / FEED</div>
       <div class="world-hud">
         <span class="hud-chip"><i class="hud-dot human-dot"></i><b id="human-count">24</b> 人类信号</span>
         <span class="hud-chip"><i class="hud-dot zombie-dot"></i><b id="zombie-count">0</b> 尸群单位</span>
@@ -107,6 +110,26 @@
         </div>
       </div>
     </div>
+    <section class="monitor-console" aria-label="感染实验控制台">
+      <div class="monitor-console-heading">
+        <span class="monitor-console-icon">⌁</span>
+        <div><small>CONTROL ROOM / 01</small><strong id="monitor-stage-name">零号感染实验</strong></div>
+        <span class="monitor-status" id="monitor-phase">观察中</span>
+      </div>
+      <div class="monitor-telemetry">
+        <div><small>剩余人类</small><strong id="monitor-human-count">0</strong></div>
+        <div><small>活跃感染体</small><strong id="monitor-zombie-count">0</strong></div>
+        <div><small>回收残骸</small><strong id="monitor-salvage-count">0</strong></div>
+        <div><small>尸能</small><strong id="monitor-energy-count">0</strong></div>
+      </div>
+      <p class="monitor-message" id="monitor-message">首次投放感染体，观察人类防线如何应对。</p>
+      <div class="monitor-controls">
+        <label class="monitor-unit-wrapper" for="monitor-unit-select"><small>感染体类型</small><select id="monitor-unit-select" aria-label="选择投放的感染体"><option value="walker">普通行尸</option></select></label>
+        <button class="monitor-deploy" id="monitor-deploy" type="button"><span>☣</span> 随机投放 <em id="monitor-deploy-cost">ϟ 12</em></button>
+        <button class="monitor-research" id="monitor-research" type="button" title="打开进化研究"><span>⌬</span> 进化</button>
+      </div>
+      <p class="monitor-explain">点击随机投放，僵尸会自动搜寻目标；全部人类失联且无人逃离后才能通关。感染体死亡可回收残骸。</p>
+    </section>
     <aside class="tutorial-card" id="tutorial-card" role="status" aria-live="polite" hidden>
       <div class="tutorial-head"><span>◉ 新手行动指引</span><button id="tutorial-skip" type="button">跳过指引</button></div>
       <strong id="tutorial-title">零号行动</strong>
@@ -246,7 +269,7 @@
   </section>
 </aside>
 </main>
-<footer class="footer"><span>HUNGER PROTOCOL / DEMO 0.6</span><span>单机原型 · 进度保存在当前浏览器</span></footer>
+<footer class="footer"><span>HUNGER PROTOCOL / DEMO 0.7</span><span>单机原型 · 进度保存在当前浏览器</span></footer>
 </div>
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 <script src="src/core/storage.js"></script>
