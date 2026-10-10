@@ -6,7 +6,8 @@
 ## 当前分层
 - `src/render/asset-catalog.js`：所有场景对象的 **ID、种类、锚点、渲染层、碰撞策略、可选变体和绘制注册表**。
 - `src/render/siege-art.js`：现阶段的程序化像素画师。只负责根据参数绘制，建筑、车辆、灯光等通过 `HungerAssets.draw(id,ctx,...args)` 统一调用。
-- `game.js`：布局物理矩形 `buildings`、入口对象与可破坏路障 `barriers`；这些是玩法数据，必须独立于装饰性视觉。\n- `SPRITE_DEFINITIONS`：集中保存人物/尸群/车辆精灵尺寸与锚点；角色的绘制也统一通过 `HungerAssets.draw("human"/"zombie",...)` 接入。
+- `game.js`：布局物理矩形 `buildings`、入口对象与可破坏路障 `barriers`；这些是玩法数据，必须独立于装饰性视觉。
+- `SPRITE_DEFINITIONS`：集中保存人物/尸群/车辆精灵尺寸与锚点；角色的绘制也统一通过 `HungerAssets.draw("human"/"zombie",...)` 接入。
 - `src/core/navigation.js`：只读取物理对象整理成的障碍矩形，绝不使用屋顶阴影、玻璃和其他画面效果决定碰撞。
 - `drawWorld()`：静态地图缓存，世界变化时才失效；生命条、角色、弹道在动态层独立绘制。
 
