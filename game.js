@@ -501,9 +501,9 @@ function moveEntity(e,tx,ty,speed,dt,target=null){
   }else e.navStallCycles=0;
   e.progressTime=0;e.previousGoalDistance=remaining;
  }
- if(moved){
+ if(moved&&e.navStallCycles<2){
   e.stuckTime=0;e.lastMoveX=e.x;e.lastMoveY=e.y;
- }else if(Math.hypot(dest.x-e.x,dest.y-e.y)>4){
+ }else if(remaining>4){
   e.stuckTime=(e.stuckTime||0)+dt;
   if(e.stuckTime>.25){e.path=null;e.pathIndex=0;e.pathTimer=0;}
   if(e.stuckTime>.65){
