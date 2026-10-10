@@ -372,9 +372,9 @@ function commandHorde(x,y){
  const squad=zombies.filter(z=>z.alive);
  if(tutorialActive&&tutorialStep===2&&squad.length){tutorialStep=3;refreshTutorial();}
  if(!squad.length){commandMode=false;updateUI();toast("尸群尚未集结，先部署单位。");return;}
- if(isBlocked(x,y,10)){
-  const p=freeSpotAround(x,y,65*worldScale());x=p.x;y=p.y;
- }
+ if(!navGrid)rebuildNavigation();
+ const commandGoal=gate?navGrid.approachRect(squad[0].x,squad[0].y,{x:gate.x-gate.w/2,y:gate.y-gate.h/2,w:gate.w,h:gate.h},10):navGrid.closestReachable(squad[0].x,squad[0].y,x,y);
+ x=commandGoal.x;y=commandGoal.y;
  const radius=Math.min(46,13+squad.length*2.2)*worldScale();
  if(!navGrid)rebuildNavigation();
  squad.forEach((z,i)=>{
