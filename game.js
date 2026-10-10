@@ -68,6 +68,10 @@ try{tutorialActive=localStorage.getItem(TUTORIAL_KEY)!=="done";}catch(e){}
 const highestCleared=()=>Math.max(meta.cleared.nz||0,meta.cleared.pt||0);
 const unitUnlocked=id=>core.isResearched(meta,id);
 let menuOpen=true,sessionActive=false,menuWasPaused=false,encounterStarted=false;
+const UI_LAYOUT_KEY="hunger-protocol-layout-v1";
+let uiLayout={dock:!!window.matchMedia?.("(max-width:760px)")?.matches,hud:false,objective:!!window.matchMedia?.("(max-width:760px)")?.matches};
+try{const saved=JSON.parse(localStorage.getItem(UI_LAYOUT_KEY)||"null");if(saved&&typeof saved==="object")for(const k of ["dock","hud","objective"])if(typeof saved[k]==="boolean")uiLayout[k]=saved[k];}catch(e){}
+
 const simulationClock=core.createClock({step:1/30,maxSteps:8});
 let renderClock=0;
 const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
@@ -926,6 +930,18 @@ function completeTutorial(){
  $("canvas-hint").classList.remove("suppressed");
  try{localStorage.setItem(TUTORIAL_KEY,"done");}catch(e){}
 }
+function applyUiLayout(){
+ const shell=$("app-shell");
+ for(const k of ["dock","hud","objective"]){
+  shell.classList.toggle(k==="dock"?"dock-collapsed":k==="hud"?"hud-collapsed":"objective-collapsed",uiLayout[k]);
+  const button=$(k+"-toggle");
+  button.setAttribute("aria-expanded",String(!uiLayout[k]));
+  button.setAttribute("aria-label",(uiLayout[k]?"展开":"收起")+(k==="dock"?"部署和技能栏":k==="hud"?"战场信息":"任务信息"));
+ }
+ $("dock-toggle").querySelector("small").textContent=uiLayout.dock?"展开操作":"收起操作";
+ try{localStorage.setItem(UI_LAYOUT_KEY,JSON.stringify(uiLayout));}catch(e){}
+ syncDockClearance();
+}
 function syncDockClearance(){
  const dock=$("bottom-dock");if(!dock)return;
  const height=dock.getBoundingClientRect().height;
@@ -1048,6 +1064,7 @@ $("menu-research-open").addEventListener("click",()=>showMenuPage("research"));
 $("menu-settings-open").addEventListener("click",()=>showMenuPage("settings"));
 document.querySelectorAll("[data-menu-back]").forEach(b=>b.addEventListener("click",()=>showMenuPage("home")));
 $("back-to-menu").addEventListener("click",openMainMenu);
+for(const k of ["dock","hud","objective"])$(k+"-toggle").addEventListener("click",()=>{uiLayout[k]=!uiLayout[k];applyUiLayout();});
 $("overlay-menu").addEventListener("click",openMainMenu);
 for(const [id,key] of [["menu-setting-team-highlight","teamHighlight"],["menu-setting-health-bars","healthBars"],["menu-setting-low-power","lowPower"]]){
  $(id).addEventListener("change",e=>{
@@ -1139,10 +1156,10 @@ canvas.addEventListener("contextmenu",e=>e.preventDefault());
 $("zoom-out").addEventListener("click",()=>zoomCamera(camera.zoom/1.15));
 $("zoom-in").addEventListener("click",()=>zoomCamera(camera.zoom*1.15));
 $("zoom-reset").addEventListener("click",()=>{resetCamera();drawWorld();});
-setupMission(true);renderUI();syncDockClearance();refreshMenu();showMenuPage("home");showHelpHint();requestAnimationFrame(mainLoop);
+setupMission(true);renderUI();applyUiLayout();refreshMenu();showMenuPage("home");showHelpHint();requestAnimationFrame(mainLoop);
 if(window.__HUNGER_TEST_MODE__===true){
  window.__HUNGER_TEST__={
-  menuState:()=>({menuOpen,sessionActive}),researchUnit,launchCampaign,openMainMenu,
+  menuState:()=>({menuOpen,sessionActive}),uiLayout:()=>({...uiLayout}),researchUnit,launchCampaign,openMainMenu,
   state:()=>({running,paused,missionTime,encounterStarted,country,stage,difficulty,endingType,tutorialStep,tutorialActive,neutralized,escaped,objectiveTarget,barriers:barriers.map(b=>({...b})),camera:{zoom:camera.zoom,x:camera.x,y:camera.y,maxZoom:camera.maxZoom},shelter:{x:shelter.x,y:shelter.y,hp:shelter.hp,maxHp:shelter.maxHp,destroyed:shelter.destroyed,building:shelter.building?{...shelter.building}:null},buildings:buildings.map(b=>({...b})),humans:humans.map(h=>({id:h.id,x:h.x,y:h.y,alive:h.alive,sheltered:h.sheltered,kind:h.kind,patrol:!!h.patrol})),zombies:zombies.map(z=>({x:z.x,y:z.y,alive:z.alive}))}),
   findPath,segmentBlocked,damageShelter,damageBarricade:(id,amount)=>damageBarricade(barriers.find(b=>b.id===id),amount),isBlocked,finishMission,selectCountry,resetStage,stepSimulation:update,convertHumanForTest:id=>{const h=humans.find(h=>h.id===id&&h.alive&&h.kind==="civilian");if(!h||h.sheltered)return false;convertHuman(h);return true;}
  };
