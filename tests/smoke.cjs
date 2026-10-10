@@ -138,6 +138,8 @@ assert.ok(source.includes("const SPRITE_DEFS=") && source.includes("function get
 assert.ok(source.includes("const CITY_PALETTES=") && source.includes("art.drawScene") && source.includes("function setupBarricades") && source.includes("function damageBarricade"), "Siege rendering and interactive barricades must use shared scene and obstacle systems");
 assert.ok((fs.readFileSync(path.join(__dirname, "..", "style.css"), "utf8").match(/\{/g) || []).length < 500, "UI rules should stay consolidated in one stylesheet");
 assert.ok(window.HungerArt.drawScene&&window.HungerArt.paintZombie&&window.HungerArt.paintHuman, "Pixel art renderer must load from shared assets");
+assert.equal(document.querySelectorAll("[data-unit]").length,4,"The demo must offer four distinct infected classes");
+assert.ok(document.querySelector(".barrier-status"),"Gate durability needs on-screen feedback");
 assert.ok(source.includes("function isShelterRestricted") && source.includes("入口区域禁止投放"), "Shelter and entrance must reject deployment");
 
 // Siege gate must have real HP and become traversable after demolition.
@@ -153,7 +155,7 @@ assert.equal(qa.isBlocked(gate.x,gate.y,1),false,"Destroyed barricade should sto
 document.getElementById("overlay-action").click();
 document.querySelector('[data-unit="spitter"]').click();
 assert.match(document.getElementById("selected-unit-name").textContent,/喷吐者/,"Fourth unit must be selectable");
-assert.match(document.getElementById("barrier-status").textContent,/突破完毕/,"HUD should show the demolished barricade");
+assert.match(document.getElementById("barrier-status").textContent,/防线崩溃/,"HUD should show the demolished barricade");
 
 // Regression: the previous battle's "next/map" overlay action must not leak into a fresh campaign.
 qa.finishMission(true);
