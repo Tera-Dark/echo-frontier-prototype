@@ -1,55 +1,59 @@
-# 尸潮纪元：全球猎食 · Hunger Protocol
+# Hunger Protocol · 尸潮纪元：全球猎食
 
-手机竖屏优先、电脑横屏适配的单机尸群增量策略网页原型。当前 Demo 用于验证：部署尸群 → 自动追猎 → 吞噬/感染 → 获得资源与突变器官 → 升级尸巢 → 挑战更高难度。
+正在开发的**单机尸群增量策略网页游戏**。当前首要目标是完善网页版可玩性，未来以相同 Web 游戏产物封装手机 App。
 
-## 在线试玩
+**仓库：** https://github.com/Tera-Dark/Hunger-Protocol  
+**网页版：** https://tera-dark.github.io/Hunger-Protocol/ （以仓库 GitHub Actions 的 Pages 部署链接为准）  
+**状态：** 可玩的 Demo，仍需关卡平衡与真机性能验收。
 
-**https://tera-dark.github.io/echo-frontier-prototype/**
+## 操作
+开始围猎 → 选择行尸/迅猎者/重尸 → 点击地图空地部署 → 切换暴食或感染策略 → 使用主动技能 → 击败目标、进化尸巢并解锁关卡。
 
-推送到 `main` 后，GitHub Actions 会自动校验并部署 GitHub Pages。
+- 桌面：拖动地图平移、滚轮缩放；数字 1/2/3 选单位、F 指挥、空格暂停、Esc 取消。
+- 手机：单指点按部署/拖动地图，双指缩放；避难所建筑与入口禁止直接部署。
+- 当前进度仅保存在本机，不自动跨设备同步。
 
-## 本地运行
+## 目录
 
-直接打开 `index.html` 即可；也可运行静态服务器：
+| 位置 | 用途 |
+| --- | --- |
+| index.html / style.css | 全屏战场与 HUD |
+| game.js | 当前战斗、地图、寻路、绘制、DOM 交互（后续继续拆分） |
+| src/core/storage.js | 安全存档、旧存档迁移与设置偏好 |
+| src/core/clock.js | 固定时间步，确保战斗逻辑不依赖显示器刷新率 |
+| assets/、manifest.webmanifest、sw.js | 图标与离线 Web 支持 |
+| scripts/build.cjs | 构建可独立部署的 dist/ |
+| tests/ | 存档/时钟单测和模拟战斗/交互回归 |
+| capacitor.config.json | 未来 App 容器配置，尚无原生 Android/iOS 工程 |
+| docs/ | 游戏、美术、架构与实机测试标准 |
 
-```bash
+## 运行
+
+直接使用 Python 静态服务器（不需要依赖安装）：
+
+~~~bash
 python -m http.server 8080
-```
+~~~
 
-然后打开 `http://localhost:8080`。项目使用原生 HTML、CSS、JavaScript 和 Canvas，不需要 Node.js、构建步骤、CDN 或 API 密钥。
+打开 http://localhost:8080 。开发构建需 Node.js 22：
 
-## 界面设计
+~~~bash
+npm install --no-audit --no-fund --package-lock=false
+npm test
+npm run build
+python -m http.server 8080 --directory dist
+~~~
 
-本项目的颜色、间距、断点、层级与素材锚点规则统一记录在 [美术与 UI 规范](docs/ART-UI-STANDARDS.md)。
+GitHub Pages 在 CI 测试成功后**仅部署 dist/**，不会发布测试文件和源码文档。
 
-- 城市战场铺满整个浏览器视口，不再在网页中嵌一张小地图。
-- 顶部为轻量资源 HUD，底部为出兵、进食策略和技能操作舱。
-- 战区、尸巢、器官、记录使用可收起的内部抽屉；手机端以底部面板形式滑入。
-- 地图绘制会根据竖屏/横屏视口重新布局，支持手机竖屏和桌面横屏。
+## 移动 App 迁移
 
-## 当前 Demo 内容
+已准备：可独立构建的 Web 产物、核心存档/时间步模块、触控操作、PWA 资源及 Capacitor 配置。**未准备：原生 Android/iOS 工程、安装包、签名、系统返回键处理、真机电量与性能验收。**
 
-- 两个可试玩战区：新西兰·南湾、葡萄牙·圣维拉；各有三个阶段关卡配置。
-- 每关四档难度：游荡、失控、围猎、灭城。难度会影响人类数量、武装反击、目标要求与奖励倍率。
-- Canvas 城市地图；点击街区部署行尸、迅猎者和可解锁的重尸。
-- 人类会逃跑，守卫与精英会攻击尸群；尸群会自动追踪、攻击、吞噬或感染目标。
-- 两种全局战斗策略：暴食优先（偏资源）与感染优先（偏扩张）。
-- 主动技能：血腥号令、指定位置的感染脉冲。
-- 稀有战利品：复生脑核、暴食胃囊、瘟疫腺体、骨甲壳；支持装备与联动效果。
-- 尸巢 Meta：扩张巢穴、感染腺体、能量腔体，资源与解锁进度保存在本地。
-- 响应式界面：移动端竖屏单列，宽屏桌面采用战场与管理面板双栏。
+后续先从 game.js 中渐进拆出 simulation（战斗/AI）、render（Canvas）、ui（交互）；通过网页版回归后再增加 Capacitor 原生工程，避免一次性重写。
 
-## 操作速览
+详见 [工程架构](docs/ARCHITECTURE.md)、[美术 UI 规范](docs/ART-UI-STANDARDS.md)、[试玩验收清单](docs/PLAYTEST-CHECKLIST.md)、[游戏设计基线](docs/GAME-DESIGN.md)。
 
-1. 点击“开始围猎”启动本关，初始尸群会自动开始追猎。
-2. 选择单位类型，再点击地图可部署更多尸群。
-3. 用“暴食优先 / 感染优先”切换收获与扩张倾向。
-4. 尝试血腥号令或感染脉冲，关注人类撤离与警戒。
-5. 完成目标后获得资源与可能的器官掉落；在右侧升级尸巢、装备器官。
-6. 从战区地图选择已解锁阶段或更高难度，重复刷取目标奖励。
+## 限制
 
-## 原型边界
-
-这是前期可玩纵切片，不是完整游戏。地图寻路、战斗平衡、关卡目标、器官池和单位行为仍在验证中。当前存档位于当前浏览器的 `localStorage`，不同设备不自动同步；清除浏览器数据会删除存档。
-
-设计基线见 [游戏设计文档](docs/GAME-DESIGN.md)，测试步骤见 [试玩验收清单](docs/PLAYTEST-CHECKLIST.md)。
+当前游戏仍是 Canvas 单人原型，无联机、账号、云存档。CI 的 DOM 模拟不等于真实浏览器 GPU 或手机 FPS 验证。
