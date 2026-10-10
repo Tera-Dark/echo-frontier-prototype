@@ -6,7 +6,7 @@
 **网页版：** https://tera-dark.github.io/Hunger-Protocol/ （以仓库 GitHub Actions 的 Pages 部署链接为准）  
 **状态：** 可玩的 Demo，仍需关卡平衡与真机性能验收。
 
-## 当前体验 · Demo 0.5：从一只行尸开始
+## 当前体验 · Demo 0.6：从一只行尸开始
 
 现在有独立的**开始菜单**，包括「开始新游戏」「继续战役」「巢群研究」「设置」。新档直接进入零号街区，**无需经过第二层开场弹窗**，初始只显示尸能、一个普通行尸的部署卡和精简目标提示。
 
@@ -26,7 +26,7 @@
 **循序解锁：** 初始仅行尸；通关第 1 关获得迅猎者，第 2 关获得重尸，第 3 关获得喷吐者。现有旧存档的已通关进度会被保留。
 
 - 桌面：拖动地图平移、滚轮缩放；数字 1/2/3/4 选已解锁单位、F 指挥、空格暂停、Esc 取消。
-- 手机：单指点按部署/拖动地图，双指缩放；避难所建筑与入口禁止直接部署。
+- 手机：单指点按部署/拖动地图，双指缩放；避难所建筑与入口禁止直接部署。操作栏顶部「操作栏」可一键收起为紧凑的尸种快捷栏，任务卡与顶栏战场信息也可单独伸缩；显示偏好会保存在本机。
 - 首次游玩会出现分步操作指引；顶栏「? 指引」随时重看，存档重置被移入设置以免误触。
 - 当前进度仅保存在本机，不自动跨设备同步。
 
@@ -35,9 +35,12 @@
 | 位置 | 用途 |
 | --- | --- |
 | index.html / style.css | 全屏战场与 HUD |
-| game.js | 当前战斗、地图、寻路、绘制、DOM 交互（后续继续拆分） |
+| game.js | 当前战斗、单位 AI 与 DOM 接线（持续拆分） |
 | src/core/storage.js | 安全存档、旧存档迁移与设置偏好 |
 | src/core/clock.js | 固定时间步，确保战斗逻辑不依赖显示器刷新率 |
+| src/core/navigation.js | clearance 一致的 A*、共享路线缓存、建筑外攻击点与滑墙处理 |
+| src/render/asset-catalog.js | 场景对象统一 ID、锚点、碰撞意图与可复用绘制注册表 |
+| src/render/siege-art.js | 暮色像素世界与共享场景绘制器 |
 | assets/、manifest.webmanifest、sw.js | 图标与离线 Web 支持 |
 | scripts/build.cjs | 构建可独立部署的 dist/ |
 | tests/ | 存档/时钟单测和模拟战斗/交互回归 |
@@ -69,7 +72,7 @@ GitHub Pages 在 CI 测试成功后**仅部署 dist/**，不会发布测试文�
 
 后续先从 game.js 中渐进拆出 simulation（战斗/AI）、render（Canvas）、ui（交互）；通过网页版回归后再增加 Capacitor 原生工程，避免一次性重写。
 
-详见 [暮色围城样板关卡](docs/DUSK-SIEGE-VERTICAL-SLICE.md)、[工程架构](docs/ARCHITECTURE.md)、[美术 UI 规范](docs/ART-UI-STANDARDS.md)、[试玩验收清单](docs/PLAYTEST-CHECKLIST.md)、[游戏设计基线](docs/GAME-DESIGN.md)。
+详见 [寻路与卡角恢复规范](docs/NAVIGATION.md)、[美术资产管理](docs/ASSET-PIPELINE.md)、[暮色围城样板关卡](docs/DUSK-SIEGE-VERTICAL-SLICE.md)、[工程架构](docs/ARCHITECTURE.md)、[美术 UI 规范](docs/ART-UI-STANDARDS.md)、[试玩验收清单](docs/PLAYTEST-CHECKLIST.md)、[游戏设计基线](docs/GAME-DESIGN.md)。
 
 ## 限制
 
