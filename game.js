@@ -19,7 +19,8 @@ const CITY_PALETTES={
 let navGrid=null;
 const CAMERA_LIMITS={nz:[2.35,2.55,2.7],pt:[2.4,2.65,2.85]};
 const camera={zoom:1,minZoom:1,maxZoom:2.35,x:0,y:0};
-let pointerGesture=null;
+let pointerGesture=null,pinchGesture=null;
+const activePointers=new Map();
 let shelter={kind:"shelter",building:null,door:{x:0,y:0},x:0,y:0,hp:0,maxHp:0,destroyed:false};
 let W=760,H=600;const STORE=core.SAVE_KEY;
 const COUNTRIES={
@@ -200,20 +201,49 @@ function segmentBlocked(x1,y1,x2,y2){
  for(let i=1;i<steps;i++){const t=i/steps;if(isBlocked(x1+(x2-x1)*t,y1+(y2-y1)*t,3))return true;}return false;
 }
 function cameraPointerDown(e){
- if(e.button!==0&&e.button!==1&&e.button!==2)return;
- pointerGesture={id:e.pointerId,button:e.button,startX:e.clientX,startY:e.clientY,lastX:e.clientX,lastY:e.clientY,moved:false};
+ if(![0,1,2].includes(e.button))return;
+ activePointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+ if(activePointers.size===1)pointerGesture={id:e.pointerId,button:e.button,startX:e.clientX,startY:e.clientY,lastX:e.clientX,lastY:e.clientY,moved:false};
+ if(activePointers.size>=2){
+  if(pointerGesture)pointerGesture.moved=true;
+  const [a,b]=[...activePointers.values()],distance=Math.hypot(a.x-b.x,a.y-b.y);
+  pinchGesture={initialDistance:Math.max(1,distance),initialZoom:camera.zoom};
+ }
  try{canvas.setPointerCapture(e.pointerId);}catch(err){}
 }
 function cameraPointerMove(e){
+ if(!activePointers.has(e.pointerId))return;
+ activePointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+ if(activePointers.size>=2){
+  const [a,b]=[...activePointers.values()];
+  if(!pinchGesture)pinchGesture={initialDistance:Math.max(1,Math.hypot(a.x-b.x,a.y-b.y)),initialZoom:camera.zoom};
+  const rect=canvas.getBoundingClientRect(),centerX=(a.x+b.x)/2-rect.left,centerY=(a.y+b.y)/2-rect.top;
+  const zoom=pinchGesture.initialZoom*Math.hypot(a.x-b.x,a.y-b.y)/pinchGesture.initialDistance;
+  zoomCamera(zoom,centerX,centerY);
+  return;
+ }
  const g=pointerGesture;if(!g||g.id!==e.pointerId)return;
  const dx=e.clientX-g.lastX,dy=e.clientY-g.lastY;g.lastX=e.clientX;g.lastY=e.clientY;
- if(!g.moved&&Math.hypot(e.clientX-g.startX,e.clientY-g.startY)>5)g.moved=true;
+ if(!g.moved&&Math.hypot(e.clientX-g.startX,e.clientY-g.startY)>6)g.moved=true;
  if(g.moved){camera.x+=dx;camera.y+=dy;clampCamera();drawWorld();}
 }
 function cameraPointerUp(e){
- const g=pointerGesture;if(!g||g.id!==e.pointerId)return;pointerGesture=null;
+ const g=pointerGesture,multitouch=!!pinchGesture||activePointers.size>1;
+ activePointers.delete(e.pointerId);
  try{canvas.releasePointerCapture(e.pointerId);}catch(err){}
- if(!g.moved&&g.button===0)spawnAtCanvas(e);
+ if(multitouch){
+  pinchGesture=null;pointerGesture=null;
+  if(activePointers.size===1){
+   const [id,p]=[...activePointers.entries()][0];
+   pointerGesture={id,button:0,startX:p.x,startY:p.y,lastX:p.x,lastY:p.y,moved:true};
+  }
+  return;
+ }
+ pointerGesture=null;
+ if(g&&g.id===e.pointerId&&!g.moved&&g.button===0)spawnAtCanvas(e);
+}
+function cameraPointerCancel(e){
+ activePointers.delete(e.pointerId);pointerGesture=null;pinchGesture=null;
 }
 function handleMapWheel(e){
  e.preventDefault();const rect=canvas.getBoundingClientRect();zoomCamera(camera.zoom*(e.deltaY<0?1.12:1/1.12),e.clientX-rect.left,e.clientY-rect.top);
@@ -805,7 +835,7 @@ function mainLoop(stamp){
 function resetStage(){if(running&&!ended&&!confirm("正在进行的猎食将结束，确定重新部署吗？"))return;setupMission(true);toast("战场已重置，尸巢成长保留。");}
 function selectCountry(value){
  if(running){toast("请先结束当前猎食。");$("country-select").value=country;return;}
- country=value;stage=Math.min(meta.cleared[country],2);setupMission(true);updateCampaignUI();
+ country=value;stage=Math.min(meta.cleared[country],2);setupMission(true);renderCampaignUI();
 }
 function selectStage(value){
  const index=Number(value);
@@ -869,7 +899,6 @@ $("setting-health-bars").addEventListener("change",e=>{preferences.healthBars=e.
 document.querySelectorAll("[data-unit]").forEach(b=>b.addEventListener("click",()=>{
  const id=b.dataset.unit;
  if(id==="brute"&&meta.upgrades.capacity===0&&stage===0){toast("先升级一次扩张巢穴，解锁重尸。");return;}
- if(running&&paused===false){} // Unit selection during battle is intentional.
  selectedUnit=id;document.querySelectorAll("[data-unit]").forEach(x=>x.classList.toggle("selected",x.dataset.unit===id));updateUI();showHelpHint();
 }));
 document.querySelectorAll("[data-difficulty]").forEach(b=>b.addEventListener("click",()=>selectDifficulty(b.dataset.difficulty)));
@@ -894,13 +923,24 @@ $("reset-game").addEventListener("click",()=>{
  core.clearSave(localStorage);meta=saveDefaults();country="nz";stage=0;difficulty=0;selectedUnit="walker";policy="feed";setupMission(true);$("event-log").innerHTML="";log("巢穴已重置。新的猎食周期开始。");toast("本地存档已重置");
 });
 document.addEventListener("visibilitychange",()=>{if(document.hidden&&running&&!ended){paused=true;$("pause-button").textContent="▶ 继续";updateUI();}});
-document.addEventListener("keydown",e=>{if(e.key==="Escape"){if($("management-drawer").classList.contains("open"))closeDrawer();if(pendingSkill){pendingSkill="";$("canvas-hint").textContent="选择单位，再点击地图部署；可再次点击「指挥」移动尸群";toast("已取消技能瞄准。");}if(commandMode){commandMode=false;updateUI();toast("已取消指挥模式。");}}});
+document.addEventListener("keydown",e=>{
+ if(e.target?.matches?.("input,select,textarea,[contenteditable]"))return;
+ if(e.key==="Escape"){
+  if($("management-drawer").classList.contains("open"))closeDrawer();
+  if(pendingSkill){pendingSkill="";$("canvas-hint").textContent="选择单位，再点击地图部署；可再次点击「指挥」移动尸群";toast("已取消技能瞄准。");}
+  if(commandMode){commandMode=false;updateUI();toast("已取消指挥模式。");}
+ }else if(["1","2","3"].includes(e.key)){
+  const unit={1:"walker",2:"runner",3:"brute"}[e.key],button=document.querySelector('[data-unit="'+unit+'"]');
+  if(button&&!button.disabled)button.click();
+ }else if(e.code==="Space"&&running&&!ended){e.preventDefault();$("pause-button").click();}
+ else if(e.key.toLowerCase()==="f"&&running&&!ended){$("command-button").click();}
+});
 resizeWorld();
 window.addEventListener("resize",()=>{resizeWorld();drawWorld();});
 canvas.addEventListener("pointerdown",cameraPointerDown);
 canvas.addEventListener("pointermove",cameraPointerMove);
 canvas.addEventListener("pointerup",cameraPointerUp);
-canvas.addEventListener("pointercancel",e=>{if(pointerGesture?.id===e.pointerId)pointerGesture=null;});
+canvas.addEventListener("pointercancel",cameraPointerCancel);
 canvas.addEventListener("wheel",handleMapWheel,{passive:false});
 canvas.addEventListener("contextmenu",e=>e.preventDefault());
 $("zoom-out").addEventListener("click",()=>zoomCamera(camera.zoom/1.15));
