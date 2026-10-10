@@ -175,11 +175,10 @@ function damageBarricade(b,amount){
  b.hp=Math.max(0,b.hp-amount);
  particles.push({x:b.x,y:b.y,life:.35,max:.35,type:"hit"});
  if(b.hp<=0){
-  b.destroyed=true;rebuildNavigation();log("外侧路障已被撕开！尸群可以继续突破入口。");toast("防线崩溃！避难所入口已暴露");
+  b.destroyed=true;worldDirty=true;mapCache=null;rebuildNavigation();log("外侧路障已被撕开！尸群可以继续突破入口。");toast("防线崩溃！避难所入口已暴露");
   if(tutorialActive&&tutorialStep<=3){tutorialStep=4;refreshTutorial();}
   floating.push({x:b.x,y:b.y,text:"突破防线",life:1.5,max:1.5,color:"#e7b877"});
  }
- worldDirty=true;mapCache=null;
 }
 const shelteredCount=()=>humans.filter(h=>h.alive&&h.sheltered).length;
 function rebuildNavigation(){
@@ -431,12 +430,11 @@ function damageShelter(amount){
  floating.push({x:shelter.x,y:shelter.y-18,text:"-"+Math.round(amount),life:.55,max:.55,color:"#ff9a76"});
  particles.push({x:shelter.x,y:shelter.y,life:.22,max:.22,type:"hit"});
  if(shelter.hp<=0){
-  shelter.destroyed=true;
+  shelter.destroyed=true;worldDirty=true;mapCache=null;
   for(const h of humans){if(!h.alive||!h.sheltered)continue;h.sheltered=false;const p=freeSpotAround(shelter.x,shelter.y,Math.min(W,H)*.16);h.x=p.x;h.y=p.y;h.panic=true;h.path=null;h.pathTimer=0;}
   log("人类避难所被尸群攻破！幸存者涌出。");toast("避难所已被攻破！快切到感染优先收割幸存者");
   if(tutorialActive&&tutorialStep<=4){tutorialStep=5;refreshTutorial();}
  }
- worldDirty=true;mapCache=null;
 }
 function nearestZombie(h){
  let found=null,best=Infinity;
@@ -647,6 +645,20 @@ function showToastMap(){hideOverlay();running=false;ended=false;paused=false;set
 function drawStaticWorld(){
  art.drawScene(ctx,{w:W,h:H,country,stage,difficulty,buildings,shelter,barriers,exits:exits(),isBlocked});
 }
+function drawDynamicFortificationBars(c){
+ const gate=barriers.find(b=>!b.destroyed);
+ if(gate){
+  const x=gate.x-gate.w/2,y=gate.y-gate.h/2-15;
+  c.fillStyle="#111b1c";c.fillRect(x,y,gate.w,5);
+  c.fillStyle="#e8b67b";c.fillRect(x,y,gate.w*gate.hp/Math.max(1,gate.maxHp),3);
+ }
+ if(shelter.building){
+  const d=shelter.door,x=d.x-21,y=d.y-24;
+  c.fillStyle="#141c1c";c.fillRect(x,y,42,5);
+  c.fillStyle=shelter.destroyed?"#d27365":"#b3d49d";
+  c.fillRect(x+1,y+1,40*shelter.hp/Math.max(1,shelter.maxHp),3);
+ }
+}
 function drawWorld(){
  const dpr=graphicsPixelRatio();
  if(!mapCache||worldDirty||mapCache.width!==canvas.width||mapCache.height!==canvas.height){
@@ -657,6 +669,7 @@ function drawWorld(){
  ctx.setTransform(dpr,0,0,dpr,0,0);ctx.imageSmoothingEnabled=false;ctx.clearRect(0,0,W,H);ctx.save();
  ctx.translate(W/2+camera.x,H/2+camera.y);ctx.scale(camera.zoom,camera.zoom);ctx.translate(-W/2,-H/2);
  ctx.drawImage(mapCache,0,0,W,H);
+ drawDynamicFortificationBars(ctx);
  humans.forEach(drawHuman);zombies.forEach(drawZombie);particles.forEach(drawParticle);floating.forEach(drawFloat);
  ctx.restore();
 }
