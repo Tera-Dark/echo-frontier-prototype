@@ -1,0 +1,14 @@
+{
+  "name": "hunger-protocol",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Canvas zombie-horde incremental game and future mobile shell",
+  "scripts": {
+    "build": "node scripts/build.cjs",
+    "test": "node tests/core.cjs && node tests/smoke.cjs",
+    "check": "node --check game.js && node --check src/core/storage.js && node --check src/core/clock.js && npm test && npm run build"
+  },
+  "devDependencies": {
+    "jsdom": "26.1.0"
+  }
+}
