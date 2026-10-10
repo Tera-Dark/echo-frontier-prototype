@@ -334,7 +334,7 @@ button:disabled:hover{transform:none;box-shadow:none}
  .brand-copy strong{font-size:11px;letter-spacing:.02em}
  .brand-copy small{display:none}
  .quick-nav{gap:0}
- .quick-nav-button{min-width:26px;width:27px;height:30px;padding:2px;border-radius:5px}
+ .quick-nav-button{min-width:32px;width:32px;height:34px;padding:2px;border-radius:5px}
  .quick-nav-button span{font-size:14px}
  .quick-nav-button small{display:none}
  .topright{gap:2px}
@@ -360,10 +360,10 @@ button:disabled:hover{transform:none;box-shadow:none}
  .hud-chip{gap:3px;padding:4px 5px;font-size:7px}
  .hud-chip b{font-size:8px}
  .camera-controls{top:calc(env(safe-area-inset-top) + 139px);left:6px;gap:1px;padding:2px;border-radius:6px}
- .camera-controls button{height:25px;min-width:24px;padding-inline:4px;font-size:11px}
- .camera-controls span{min-width:30px;font-size:8px}
+ .camera-controls button{height:34px;min-width:34px;padding-inline:4px;font-size:12px}
+ .camera-controls span{min-width:32px;font-size:9px}
  .camera-controls button:last-child{font-size:8px}
- .canvas-hint{top:calc(env(safe-area-inset-top) + 171px);max-width:75vw;padding:4px 7px;font-size:8px}
+ .canvas-hint{top:calc(env(safe-area-inset-top) + 187px);max-width:75vw;padding:4px 7px;font-size:8px}
  .bottom-dock{left:5px;right:5px;bottom:calc(env(safe-area-inset-bottom) + 5px);width:auto;display:flex;flex-direction:column;gap:5px;transform:none;padding:7px;border-radius:10px}
  .section-heading{margin:0 1px 4px}
  .section-heading h2{font-size:10px}
@@ -379,19 +379,19 @@ button:disabled:hover{transform:none;box-shadow:none}
  .select-indicator{top:2px;right:3px;font-size:7px}
  .policy-row{gap:3px;margin-top:4px;padding:3px}
  .policy-label{max-width:30px;padding-inline:2px;font-size:7px;line-height:1.15;white-space:normal}
- .policy-button{gap:4px;padding:4px 5px;border-radius:5px}
+ .policy-button{gap:4px;min-height:36px;padding:5px;border-radius:5px}
  .policy-button>b{font-size:11px}
  .policy-button strong{font-size:8px}
  .policy-button small{font-size:6px;margin-top:1px}
  .skill-section{padding:5px 0 0;border-top:1px solid var(--line);border-left:0}
  .skill-section .section-heading{display:none}
  .skill-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:4px}
- .skill-card{min-height:35px;gap:4px;padding:4px 5px;border-radius:6px}
+ .skill-card{min-height:42px;gap:4px;padding:5px;border-radius:6px}
  .skill-glyph{width:22px;height:22px;font-size:12px;border-radius:5px}
  .skill-card strong{font-size:8px}
  .skill-card small{display:none}
  .skill-card em{font-size:7px}
- .battle-footer{left:6px;bottom:calc(env(safe-area-inset-bottom) + 163px);width:min(330px,calc(100% - 12px));padding:7px 8px;border-radius:7px}
+ .battle-footer{left:6px;bottom:calc(env(safe-area-inset-bottom) + 193px);width:min(330px,calc(100% - 12px));padding:7px 8px;border-radius:7px}
  .objective .eyebrow{font-size:7px}
  .objective strong{margin:3px 0 5px;font-size:10px}
  .objective-track{height:3px}
@@ -421,7 +421,7 @@ button:disabled:hover{transform:none;box-shadow:none}
 }
 @media(max-width:390px){
  .topright .save-status{display:none}
- .quick-nav-button{min-width:24px;width:25px}
+ .quick-nav-button{min-width:30px;width:30px}
  .quiet-button{max-width:30px;overflow:hidden;color:transparent;position:relative}
  .quiet-button:after{position:absolute;inset:0;display:grid;place-items:center;color:#b6c5b1;font-size:13px;content:"↻"}
  .resource-cell{gap:3px;padding-inline:3px}
@@ -434,7 +434,7 @@ button:disabled:hover{transform:none;box-shadow:none}
  .world-hud{justify-content:flex-end}
  .hud-chip{padding:4px 4px;font-size:6px}
  .hud-chip b{font-size:7px}
- .camera-controls button{min-width:22px}
+ .camera-controls button{min-width:31px}
  .camera-controls span{min-width:27px}
  .policy-label{display:none}
  .policy-button{justify-content:center}
