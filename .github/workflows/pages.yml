@@ -32,7 +32,10 @@ jobs:
           node --check src/core/storage.js
           node --check src/core/clock.js
           node --check src/core/progression.js
+          node --check src/core/navigation.js
+          node --check src/render/asset-catalog.js
           node --check src/render/siege-art.js
+          node tests/navigation.cjs
           npm test
       - name: Build isolated web bundle
         run: npm run build
@@ -44,7 +47,7 @@ jobs:
           const css=fs.readFileSync("dist/style.css","utf8");
           const config=JSON.parse(fs.readFileSync("capacitor.config.json","utf8"));
           assert.equal(config.webDir,"dist");
-          assert.ok(html.includes('src="src/core/storage.js"')&&html.includes('src="src/core/clock.js"')&&html.includes('src="src/core/progression.js"'));
+          assert.ok(html.includes('src="src/core/storage.js"')&&html.includes('src="src/core/clock.js"')&&html.includes('src="src/core/progression.js"')&&html.includes('src="src/core/navigation.js"'));
           assert.ok(html.includes('src="game.js"')&&html.includes('src="src/render/siege-art.js"')&&html.includes('href="manifest.webmanifest"'));
           assert.ok(css.includes("max-width:760px")&&css.includes("orientation:landscape"));
           assert.ok(fs.existsSync("dist/sw.js")&&fs.existsSync("dist/assets/icon.svg"));
