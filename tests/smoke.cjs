@@ -177,7 +177,7 @@ assert.equal(document.querySelector('[data-drawer-view="shelter"]').classList.co
 document.getElementById("drawer-close").click();
 pointer("pointerdown", Math.round(1280 * 0.37), Math.round(720 * 0.38));
 pointer("pointerup", Math.round(1280 * 0.37), Math.round(720 * 0.38));
-assert.match(document.getElementById("toast").textContent, /监控模式/, "Clicking the surveillance view must not manually deploy");
+assert.match(document.getElementById("toast").textContent, /观察模式/, "Clicking the surveillance view must not manually deploy");
 
 const settings = document.getElementById("setting-team-highlight");
 settings.checked = false;
