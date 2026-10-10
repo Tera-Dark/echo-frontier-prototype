@@ -422,8 +422,7 @@ button:disabled:hover{transform:none;box-shadow:none}
 @media(max-width:390px){
  .topright .save-status{display:none}
  .quick-nav-button{min-width:30px;width:30px}
- .quiet-button{max-width:30px;overflow:hidden;color:transparent;position:relative}
- .quiet-button:after{position:absolute;inset:0;display:grid;place-items:center;color:#b6c5b1;font-size:13px;content:"↻"}
+ 
  .resource-cell{gap:3px;padding-inline:3px}
  .resource-icon{width:17px;height:18px;font-size:10px}
  .resource-cell small{font-size:6px}
@@ -526,3 +525,7 @@ button:disabled:hover{transform:none;box-shadow:none}
  .tutorial-card p{font-size:9px}
  .battle-footer{bottom:calc(env(safe-area-inset-bottom) + var(--dock-clearance,115px))}
 }
+
+.canvas-hint.suppressed{display:none}
+.tutorial-focus:not(:disabled){outline:2px solid #c5e69f;outline-offset:2px;box-shadow:0 0 0 4px #9cc77b2b,0 0 20px #a8d77f36}
+@media(max-width:390px){.topright .help-button{max-width:none;overflow:visible;color:var(--accent)}}
