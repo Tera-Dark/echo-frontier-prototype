@@ -66,7 +66,8 @@ const TUTORIAL_KEY="hunger-protocol-tutorial-v1";
 let tutorialActive=true,tutorialStep=0;
 try{tutorialActive=localStorage.getItem(TUTORIAL_KEY)!=="done";}catch(e){}
 const highestCleared=()=>Math.max(meta.cleared.nz||0,meta.cleared.pt||0);
-const unitUnlocked=id=>({walker:0,runner:1,brute:2,spitter:3}[id]??99)<=highestCleared();
+const unitUnlocked=id=>core.isResearched(meta,id);
+let menuOpen=true,sessionActive=false,menuWasPaused=false;
 const simulationClock=core.createClock({step:1/30,maxSteps:8});
 let renderClock=0;
 const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
@@ -109,6 +110,23 @@ const aliveZombies=()=>zombies.filter(z=>z.alive).length;
 const aliveCivilians=()=>humans.filter(h=>h.alive&&h.kind==="civilian").length;
 const organOwned=id=>(meta.inventory[id]||0)>0;
 function persist(){return core.saveSave(localStorage,meta);}
+function discoverResource(id,message){
+ if(meta.discovered[id])return;
+ meta.discovered[id]=true;persist();updateProgressiveUI();
+ if(message){log(message);toast(message);}
+}
+function updateProgressiveUI(){
+ const root=$("app-shell"),clears=core.clearCount(meta);
+ root.classList.toggle("reveal-biomass",meta.discovered.biomass||clears>=1);
+ root.classList.toggle("reveal-brains",meta.discovered.brains||clears>=1);
+ root.classList.toggle("reveal-essence",meta.discovered.essence||clears>=2);
+ root.classList.toggle("has-nest",clears>=1);
+ root.classList.toggle("has-strategy",clears>=1);
+ root.classList.toggle("has-skills",clears>=1);
+ root.classList.toggle("has-loot",clears>=2);
+ root.classList.toggle("has-command",zombies.some(z=>z.alive)||clears>0);
+ root.classList.toggle("has-deployed",zombies.some(z=>z.alive));
+}
 function log(message){
  const root=$("event-log"),p=document.createElement("p"),time=document.createElement("i"),text=document.createElement("span");
  time.textContent=fmtTime(missionTime);text.textContent=message;p.append(time,text);root.prepend(p);
@@ -555,6 +573,7 @@ function update(dt){
 }
 function killHuman(h,mode){
  if(!h.alive)return;h.alive=false;neutralized++;casualties++;
+ if(!meta.discovered.biomass)discoverResource("biomass","首次猎食 · 获得生物质。");
  particles.push({x:h.x,y:h.y,life:.5,max:.5,type:"blood"});
  if(mode==="infect"){
   const extra=isEquipped("braincore")&&Math.random()<.2;
@@ -578,6 +597,7 @@ function killHuman(h,mode){
 function convertHuman(h){
  if(!h.alive)return;
  h.alive=false;neutralized++;casualties++;
+ if(!meta.discovered.biomass)discoverResource("biomass","首次感染 · 获得生物质。");
  particles.push({x:h.x,y:h.y,life:.85,max:.85,type:"infection"});
  const room=zombies.filter(z=>z.alive).length<capacity();
  if(room)spawnZombie("walker",h.x,h.y,true);
@@ -594,7 +614,7 @@ function convertHuman(h){
  if(neutralized%4===0)log("感染链扩散 · 已转化/吞噬 "+neutralized+" 名人类。");
  persist();
 }
-function convertSplash(h){if(!h.alive)return;h.alive=false;neutralized++;casualties++;meta.brains++;meta.biomass+=2;if(zombies.filter(z=>z.alive).length<capacity())spawnZombie("walker",h.x,h.y,true);particles.push({x:h.x,y:h.y,life:.65,max:.65,type:"infection"});}
+function convertSplash(h){if(!h.alive)return;if(!meta.discovered.biomass)discoverResource("biomass","感染链 · 获得生物质。");h.alive=false;neutralized++;casualties++;meta.brains++;meta.biomass+=2;if(zombies.filter(z=>z.alive).length<capacity())spawnZombie("walker",h.x,h.y,true);particles.push({x:h.x,y:h.y,life:.65,max:.65,type:"infection"});}
 function killZombie(z){
  if(!z.alive)return;z.alive=false;particles.push({x:z.x,y:z.y,life:.45,max:.45,type:"blood"});floating.push({x:z.x,y:z.y-12,text:"尸群损失",life:.8,max:.8,color:"#d77c70"});
 }
@@ -732,6 +752,7 @@ function drawParticle(p){
 }
 function drawFloat(p){ctx.save();ctx.globalAlpha=clamp(p.life/p.max,0,1);ctx.textAlign="center";ctx.font="bold 11px system-ui";ctx.fillStyle=p.color;ctx.shadowColor="#071007";ctx.shadowBlur=4;ctx.fillText(p.text,p.x,p.y);ctx.restore();}
 function updateUI(){
+ updateProgressiveUI();
  $("energy-value").innerHTML=Math.floor(meta.energy)+' <i>/ '+energyMax()+'</i>';$("energy-meter").style.width=(meta.energy/energyMax()*100)+"%";
  $("biomass-value").textContent=Math.floor(meta.biomass);$("biomass-meter").style.width=(meta.biomass/(meta.biomass+100)*100)+"%";
  $("brains-value").textContent=Math.floor(meta.brains);$("brains-meter").style.width=Math.min(100,meta.brains*8)+"%";
@@ -783,10 +804,12 @@ function renderCampaignUI(){
  document.querySelectorAll("[data-difficulty]").forEach(b=>{b.classList.toggle("active",Number(b.dataset.difficulty)===difficulty);b.disabled=running;});
  $("country-select").value=country;$("country-select").disabled=running;
  document.querySelectorAll("[data-unit]").forEach(b=>{
-  const u=b.dataset.unit,unlocked=unitUnlocked(u);
+  const u=b.dataset.unit,unlocked=unitUnlocked(u),visible=u==="walker"||core.isAvailable(meta,u);
+  b.hidden=!visible;
   b.classList.toggle("selected",selectedUnit===u);b.classList.toggle("locked-unit",!unlocked);b.disabled=!unlocked;
   b.setAttribute("aria-pressed",selectedUnit===u?"true":"false");
-  b.title=unlocked?UNITS[u].desc:"继续通关战区解锁 "+UNITS[u].name;
+  b.title=unlocked?UNITS[u].desc:visible?"前往巢群研究 "+UNITS[u].name:"推进章节后开放";
+  const sub=b.querySelector(".unit-copy>strong small");if(sub)sub.textContent=unlocked?"已研究":"待研究";
  });
 }
 function renderOrgans(){
