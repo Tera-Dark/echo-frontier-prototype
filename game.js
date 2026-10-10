@@ -67,7 +67,7 @@ let tutorialActive=true,tutorialStep=0;
 try{tutorialActive=localStorage.getItem(TUTORIAL_KEY)!=="done";}catch(e){}
 const highestCleared=()=>Math.max(meta.cleared.nz||0,meta.cleared.pt||0);
 const unitUnlocked=id=>core.isResearched(meta,id);
-let menuOpen=true,sessionActive=false,menuWasPaused=false;
+let menuOpen=true,sessionActive=false,menuWasPaused=false,encounterStarted=false;
 const simulationClock=core.createClock({step:1/30,maxSteps:8});
 let renderClock=0;
 const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
@@ -316,7 +316,7 @@ function resizeWorld(){
 }
 function setupMission(showOverlay=true){
  simulationClock.reset();$("overlay-action").dataset.mode="start";$("overlay-menu").hidden=true;
- running=false;paused=false;ended=false;endingType="";elapsed=0;missionTime=0;reinforcementCalled=false;uiClock=0;howlTime=0;howlCd=0;sporeCd=0;pendingSkill="";commandMode=false;neutralized=0;escaped=0;casualties=0;alert=0;particles=[];floating=[];zombies=[];humans=[];spawnId=1;
+ running=false;paused=false;ended=false;endingType="";elapsed=0;missionTime=0;encounterStarted=false;reinforcementCalled=false;uiClock=0;howlTime=0;howlCd=0;sporeCd=0;pendingSkill="";commandMode=false;neutralized=0;escaped=0;casualties=0;alert=0;particles=[];floating=[];zombies=[];humans=[];spawnId=1;
  resetCamera();syncShelter(true);setupBarricades(true);rebuildNavigation();worldDirty=true;mapCache=null;
  const st=activeStage(),d=diff(),civilians=st.pop+d.pop+(stage?2:0),guards=st.guards+d.guard;
  objectiveTarget=Math.ceil(civilians*(st.goal+d.goal*.12));
@@ -361,6 +361,7 @@ function spawnZombie(type,x,y,free=false){
  const p={x,y};
  if(isBlocked(x,y,8)){const spot=freeSpot();p.x=spot.x;p.y=spot.y;}
  const carapace=isEquipped("carapace")?1.25:1;
+ encounterStarted=true;
  zombies.push({id:"z"+spawnId++,type,x:p.x,y:p.y,hp:spec.hp*carapace,maxHp:spec.hp*carapace,speed:spec.speed,damage:spec.damage,attackCd:rnd(.1,.6),alive:true,age:0,trail:[],seed:rnd(0,500),hitFlash:0,moveOrder:null});
  particles.push({x:p.x,y:p.y,life:.5,max:.5,type:"spawn"});
  floating.push({x:p.x,y:p.y-14,text:free?"集结":("-"+spec.cost+" ϟ"),life:.9,max:.9,color:free?"#c6dfa0":"#b7d77b"});
@@ -487,7 +488,7 @@ function update(dt){
  if(howlTime>0)howlTime=Math.max(0,howlTime-dt);
  if(howlCd>0)howlCd=Math.max(0,howlCd-dt);
  if(sporeCd>0)sporeCd=Math.max(0,sporeCd-dt);
- missionTime+=dt;elapsed=missionTime;
+ if(encounterStarted)missionTime+=dt;elapsed=missionTime;
  if(!reinforcementCalled&&missionTime>55&&(stage>0||difficulty>0)&&!shelter.destroyed){
   reinforcementCalled=true;
   const p=freeSpotAround(shelter.door.x,shelter.door.y,80*worldScale());
@@ -850,7 +851,7 @@ function mainLoop(stamp){
  if(toastClock>0){toastClock-=dt;if(toastClock<=0)$("toast").classList.remove("show");}
  uiClock+=dt;if(uiClock>=.15){updateUI();uiClock=0;}
  renderClock+=dt;const cadence=preferences.lowPower?1/30:(window.matchMedia?.("(pointer:coarse)")?.matches?1/40:1/60);
- if(renderClock>=cadence){drawWorld();renderClock=0;}
+ if(renderClock>=cadence){if(!menuOpen)drawWorld();renderClock=0;}
  requestAnimationFrame(mainLoop);
 }
 function resetStage(){if(running&&!ended&&!confirm("正在进行的猎食将结束，确定重新部署吗？"))return;setupMission(true);toast("战场已重置，尸巢成长保留。");}
@@ -1113,7 +1114,7 @@ setupMission(true);renderUI();syncDockClearance();refreshMenu();showMenuPage("ho
 if(window.__HUNGER_TEST_MODE__===true){
  window.__HUNGER_TEST__={
   menuState:()=>({menuOpen,sessionActive}),researchUnit,launchCampaign,openMainMenu,
-  state:()=>({running,paused,missionTime,country,stage,difficulty,endingType,tutorialStep,tutorialActive,neutralized,escaped,objectiveTarget,barriers:barriers.map(b=>({...b})),camera:{zoom:camera.zoom,x:camera.x,y:camera.y,maxZoom:camera.maxZoom},shelter:{x:shelter.x,y:shelter.y,hp:shelter.hp,maxHp:shelter.maxHp,destroyed:shelter.destroyed,building:shelter.building?{...shelter.building}:null},buildings:buildings.map(b=>({...b})),humans:humans.map(h=>({id:h.id,x:h.x,y:h.y,alive:h.alive,sheltered:h.sheltered,kind:h.kind,patrol:!!h.patrol})),zombies:zombies.map(z=>({x:z.x,y:z.y,alive:z.alive}))}),
+  state:()=>({running,paused,missionTime,encounterStarted,country,stage,difficulty,endingType,tutorialStep,tutorialActive,neutralized,escaped,objectiveTarget,barriers:barriers.map(b=>({...b})),camera:{zoom:camera.zoom,x:camera.x,y:camera.y,maxZoom:camera.maxZoom},shelter:{x:shelter.x,y:shelter.y,hp:shelter.hp,maxHp:shelter.maxHp,destroyed:shelter.destroyed,building:shelter.building?{...shelter.building}:null},buildings:buildings.map(b=>({...b})),humans:humans.map(h=>({id:h.id,x:h.x,y:h.y,alive:h.alive,sheltered:h.sheltered,kind:h.kind,patrol:!!h.patrol})),zombies:zombies.map(z=>({x:z.x,y:z.y,alive:z.alive}))}),
   findPath,segmentBlocked,damageShelter,damageBarricade:(id,amount)=>damageBarricade(barriers.find(b=>b.id===id),amount),isBlocked,finishMission,selectCountry,resetStage,stepSimulation:update,convertHumanForTest:id=>{const h=humans.find(h=>h.id===id&&h.alive&&h.kind==="civilian");if(!h||h.sheltered)return false;convertHuman(h);return true;}
  };
 }
