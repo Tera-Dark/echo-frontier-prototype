@@ -33,7 +33,7 @@ let queuedFrame = null;
 window.requestAnimationFrame = callback => { queuedFrame = callback; return 1; };
 window.confirm = () => true;
 window.__HUNGER_TEST_MODE__ = true;
-for (const coreFile of ["src/core/storage.js", "src/core/clock.js"]) {
+for (const coreFile of ["src/core/storage.js", "src/core/clock.js", "src/render/siege-art.js"]) {
  window.eval(fs.readFileSync(path.join(__dirname, "..", coreFile), "utf8"));
 }
 window.eval(source);
@@ -135,10 +135,26 @@ settings.dispatchEvent(new window.Event("change", { bubbles: true }));
 assert.equal(JSON.parse(window.localStorage.getItem("hunger-protocol-prefs-v1")).teamHighlight, false, "Display preference must persist");
 assert.ok(source.includes("function findPath") && source.includes("function rebuildNavigation"), "Grid pathfinding must be wired into movement");
 assert.ok(source.includes("const SPRITE_DEFS=") && source.includes("function getSpriteOutline") && source.includes("function drawAnchoredSprite"), "Reusable anchored sprite manager must be present");
-assert.ok(source.includes("const CITY_PALETTES=") && source.includes("function drawBuilding") && source.includes("function drawShelter") && source.includes("function drawEvacGate"), "City art must use shared palettes and reusable map painters");
+assert.ok(source.includes("const CITY_PALETTES=") && source.includes("art.drawScene") && source.includes("function setupBarricades") && source.includes("function damageBarricade"), "Siege rendering and interactive barricades must use shared scene and obstacle systems");
 assert.ok((fs.readFileSync(path.join(__dirname, "..", "style.css"), "utf8").match(/\{/g) || []).length < 500, "UI rules should stay consolidated in one stylesheet");
-assert.ok(source.includes('fillText("入口",door.x,door.y+20)'), "Shelter entrance must be rendered at its actual world coordinates");
+assert.ok(window.HungerArt.drawScene&&window.HungerArt.paintZombie&&window.HungerArt.paintHuman, "Pixel art renderer must load from shared assets");
 assert.ok(source.includes("function isShelterRestricted") && source.includes("入口区域禁止投放"), "Shelter and entrance must reject deployment");
+
+// Siege gate must have real HP and become traversable after demolition.
+qa.resetStage();
+let siege = qa.state();
+assert.equal(siege.barriers.length,1,"A siege stage should have one destructible entry barricade");
+const gate=siege.barriers[0];
+assert.ok(gate.hp>0,"Barricade must start intact");
+assert.equal(qa.isBlocked(gate.x,gate.y,1),true,"Intact barricade should block unit movement");
+qa.damageBarricade(gate.id,gate.hp);
+assert.equal(qa.state().barriers[0].destroyed,true,"Barrier should be destroyed at zero HP");
+assert.equal(qa.isBlocked(gate.x,gate.y,1),false,"Destroyed barricade should stop blocking");
+document.getElementById("overlay-action").click();
+document.querySelector('[data-unit="spitter"]').click();
+assert.match(document.getElementById("selected-unit-name").textContent,/喷吐者/,"Fourth unit must be selectable");
+assert.match(document.getElementById("barrier-status").textContent,/突破完毕/,"HUD should show the demolished barricade");
+
 // Regression: the previous battle's "next/map" overlay action must not leak into a fresh campaign.
 qa.finishMission(true);
 assert.equal(qa.state().endingType,"win","Forced QA win must end the encounter");
