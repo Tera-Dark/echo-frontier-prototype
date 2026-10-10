@@ -3,7 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#101613">
+<meta name="theme-color" content="#0a100d">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="assets/icon.svg" type="image/svg+xml">
 <meta name="description" content="尸潮纪元：全球猎食 - 以尸群为核心的关卡制增量策略游戏原型。">
 <title>尸潮纪元：全球猎食 · HUNGER PROTOCOL</title>
 <link rel="stylesheet" href="style.css">
@@ -59,7 +64,7 @@
         <span class="hud-chip warning-chip"><i class="hud-dot alert-dot"></i><b id="alert-level">低</b> 警戒</span>
       </div>
       <div class="camera-controls"><button id="zoom-out" aria-label="缩小">−</button><span id="zoom-level">100%</span><button id="zoom-in" aria-label="放大">+</button><button id="zoom-reset" aria-label="重置视角">定位</button></div>
-      <div class="canvas-hint" id="canvas-hint">滚轮缩放地图，按住空白处拖动查看；点击街区部署尸群</div>
+      <div class="canvas-hint" id="canvas-hint">滚轮 / 双指缩放，拖动平移；轻触空地部署尸群</div>
       <div class="battle-overlay" id="battle-overlay">
         <div class="overlay-card">
           <span class="overlay-symbol" id="overlay-symbol">☣</span>
@@ -196,6 +201,13 @@
 <footer class="footer"><span>HUNGER PROTOCOL / EXPERIMENTAL BUILD 0.1</span><span>单机原型 · 进度保存在当前浏览器</span></footer>
 </div>
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
+<script src="src/core/storage.js"></script>
+<script src="src/core/clock.js"></script>
 <script src="game.js"></script>
+<script>
+if("serviceWorker" in navigator && location.protocol==="https:"){
+ window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}));
+}
+</script>
 </body>
 </html>
