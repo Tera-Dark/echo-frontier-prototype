@@ -12,7 +12,7 @@
   for(const key of ["biomass","brains","essence","energy"])result[key]=bounded(raw[key],d[key],0,1e9);
   result.mutations=bounded(raw.mutations,0,0,1e9);
   result.upgrades={capacity:bounded(up.capacity,0,0,5),infection:bounded(up.infection,0,0,5),energy:bounded(up.energy,0,0,5)};
-  result.cleared={nz:bounded(cleared.nz,0,0,2),pt:bounded(cleared.pt,0,0,2)};
+  result.cleared={nz:bounded(cleared.nz,0,0,3),pt:bounded(cleared.pt,0,0,3)};
   result.inventory={};
   for(const id of allowedOrgans){if(inventory[id]!==undefined)result.inventory[id]=bounded(inventory[id],0,0,99);}
   result.equipped=Array.isArray(raw.equipped)?[...new Set(raw.equipped.filter(id=>allowedOrgans.has(id)&&result.inventory[id]>0))].slice(0,3):[];
