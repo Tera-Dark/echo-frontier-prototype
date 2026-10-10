@@ -27,7 +27,7 @@
  function clearSave(storage){try{storage.removeItem(SAVE_KEY);return true;}catch(e){return false;}}
  function loadPrefs(storage){
   const raw=safeRead(storage,PREFS_KEY),p=isObject(raw)?raw:{};
-  return{teamHighlight:typeof p.teamHighlight==="boolean"?p.teamHighlight:true,healthBars:typeof p.healthBars==="boolean"?p.healthBars:true};
+  return{teamHighlight:typeof p.teamHighlight==="boolean"?p.teamHighlight:true,healthBars:typeof p.healthBars==="boolean"?p.healthBars:true,lowPower:typeof p.lowPower==="boolean"?p.lowPower:false};
  }
  function savePrefs(storage,prefs){try{storage.setItem(PREFS_KEY,JSON.stringify(loadPrefs({getItem:()=>JSON.stringify(prefs)})));return true;}catch(e){return false;}}
  root.HungerCore=Object.assign(root.HungerCore||{},{
