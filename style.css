@@ -529,3 +529,98 @@ button:disabled:hover{transform:none;box-shadow:none}
 .canvas-hint.suppressed{display:none}
 .tutorial-focus:not(:disabled){outline:2px solid #c5e69f;outline-offset:2px;box-shadow:0 0 0 4px #9cc77b2b,0 0 20px #a8d77f36}
 @media(max-width:390px){.topright .help-button{max-width:none;overflow:visible;color:var(--accent)}}
+
+
+/* v0.5 — title screen and truly progressive in-game disclosure. */
+.app-shell.menu-open > .topbar,
+.app-shell.menu-open > .resource-strip,
+.app-shell.menu-open > .main-layout,
+.app-shell.menu-open > .footer {visibility:hidden;pointer-events:none}
+.main-menu{position:fixed;z-index:100;inset:0;display:flex;align-items:center;justify-content:flex-start;overflow-y:auto;overflow-x:hidden;background:#080f10;color:#e1e9d9}
+.main-menu[hidden]{display:none!important}
+.menu-backdrop{position:absolute;inset:0;overflow:hidden;pointer-events:none;background:radial-gradient(ellipse at 80% 72%,#7c493029 0%,transparent 46%),radial-gradient(ellipse at 70% 32%,#45635b30 0%,transparent 58%),linear-gradient(120deg,#091311,#0d1718 48%,#1a2220)}
+.menu-backdrop:before{content:"";position:absolute;inset:0;opacity:.34;background:repeating-linear-gradient(0deg,transparent,transparent 3px,#02080877 4px),repeating-linear-gradient(90deg,transparent,transparent 32px,#f2c48607 33px)}
+.menu-backdrop:after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,#080e10 4%,#080e10df 34%,#080e1088 60%,#080e1030 100%),linear-gradient(0deg,#071011 0%,transparent 40%)}
+.menu-city{position:absolute;bottom:15%;width:17%;height:50%;background:#141f1f;filter:drop-shadow(-16px 15px 0 #0a1515);border-left:4px solid #33413d;transform:skewY(-2deg)}
+.menu-city:before{content:"";position:absolute;inset:8% 12%;background:repeating-linear-gradient(0deg,transparent 0 29px,#c2955060 30px 33px,transparent 34px 55px),repeating-linear-gradient(90deg,transparent 0 22px,#d59b5320 23px 26px,transparent 27px 45px)}
+.menu-city-one{right:6%;height:43%;width:18%}.menu-city-two{right:27%;height:35%;width:15%;background:#182321}.menu-city-three{right:-9%;height:61%;width:15%;background:#202a28}
+.menu-horizon{position:absolute;right:0;bottom:14%;width:66%;height:3px;background:#bd80566b;box-shadow:0 0 40px 13px #cf9d6636}
+.menu-warning{position:absolute;right:6%;bottom:7%;font:700 10px monospace;letter-spacing:.16em;color:#a1ab9750;z-index:1}
+.menu-content{position:relative;z-index:2;width:min(510px,calc(100vw - 50px));margin:5vh 0 5vh clamp(25px,9vw,160px);padding:20px 0 24px}
+.menu-brandline{display:flex;align-items:center;gap:10px;color:#acc5aa;font:700 11px monospace;letter-spacing:.16em}
+.menu-brandline b{font-size:9px;color:#99ab80;border:1px solid #78936b60;padding:3px 6px;margin-left:8px}
+.menu-emblem{display:grid;place-items:center;width:34px;height:34px;background:#293d32;border:1px solid #6e9c79;border-radius:8px;font-size:20px;color:#b8e2a4}
+.menu-title{margin:25px 0 8px;font-size:clamp(52px,7.5vw,96px);letter-spacing:.035em;font-weight:850;line-height:1.1;text-shadow:0 6px 20px #0008}
+.menu-title span{color:#bed69e}
+.menu-tagline{color:#9eae9e;letter-spacing:.09em;font-size:12px;line-height:1.8}
+.menu-story{display:flex;flex-direction:column;gap:7px;margin:31px 0 20px;padding:14px 17px;border-left:2px solid #87a579;background:#12201b8c;max-width:420px}
+.menu-story>span{color:#b3c593;font-size:9px;letter-spacing:.12em}
+.menu-story strong{font-size:15px;font-weight:750}
+.menu-story p{color:#9aab9e;font-size:11px;line-height:1.7;margin:0;max-width:38em}
+.menu-actions{display:flex;flex-direction:column;gap:9px;max-width:325px}
+.menu-primary,.menu-secondary,.menu-quiet{display:flex;align-items:center;justify-content:space-between;width:100%;border-radius:7px;text-align:left;transition:background .18s,border-color .18s}
+.menu-primary{min-height:51px;background:#bdd79c;border:1px solid #d3e8b5;color:#1a291e;padding:12px 18px;font-size:14px;font-weight:850}
+.menu-primary:hover{background:#d3ecad}.menu-secondary{min-height:42px;padding:9px 15px;border:1px solid #536d59;background:#1b2d25;color:#d1ddc9;font-size:12px}
+.menu-secondary:hover{border-color:#89b08a;background:#283d30}
+.menu-quiet{min-height:33px;max-width:150px;border:1px solid transparent;background:transparent;color:#9ba99f;padding:5px 2px;font-size:11px}
+.menu-quiet:hover{color:#f0f3e7}
+.menu-footnote{margin-top:28px;color:#7a8b7e;font-size:10px;letter-spacing:.03em}
+.menu-subpage{width:min(420px,100%);padding:11px 0}
+.menu-subpage-header{display:flex;align-items:center;justify-content:space-between;margin:0 0 12px}
+.menu-subpage-header h2{font-size:18px;margin:0}
+.menu-subpage-header .menu-quiet{width:auto}
+.menu-subpage-note,.research-empty{font-size:11px;line-height:1.7;color:#a3b2a4}
+.menu-check{display:flex;gap:10px;align-items:center;margin:13px 0;padding:11px;border:1px solid #48584a;background:#16231b;border-radius:7px;font-size:12px}
+.menu-check input{width:16px;height:16px}
+.research-pane{padding:10px 12px 0;border-top:1px solid var(--line)}
+.research-list{display:flex;flex-direction:column;gap:8px;margin-top:11px}
+.research-item{display:flex;gap:12px;align-items:center;justify-content:space-between;padding:11px;border:1px solid #54715c68;background:#15231bbf;border-radius:9px}
+.research-item.researched{border-color:#91b38c5c;background:#1e3326}
+.research-description{min-width:0}.research-description strong{display:block;font-size:12px;color:#dcead2}.research-description small{display:block;color:#b5c8a8;font-size:9px;margin-top:3px}
+.research-description p{margin:5px 0 0;color:#96a59a;font-size:9px;line-height:1.5}
+.research-buy{flex:0 0 auto;min-width:69px;min-height:36px;border:1px solid #8cb07f;color:#d9ecd0;background:#2a442e;padding:7px;border-radius:7px;font-size:10px}
+.research-buy:disabled{background:#1c2821;border-color:#485746;color:#758674;opacity:.78;cursor:not-allowed}
+.overlay-return{display:block;width:100%;margin-top:10px;padding:8px;border:1px solid #6f8b78;background:#213329;color:#d5e4d2;border-radius:7px;font-size:11px}
+.overlay-return:hover{background:#2c4935}
+/* Feature visibility is determined by save progression, never by hardcoded timing. */
+.app-shell:not(.reveal-biomass) .resource-strip .biomass-resource{display:none}
+.app-shell:not(.reveal-brains) .resource-strip .brain-resource{display:none}
+.app-shell:not(.reveal-essence) .resource-strip .essence-cell{display:none}
+.app-shell.reveal-essence .resource-strip .essence-cell{display:flex}
+.app-shell .resource-strip{grid-template-columns:repeat(4,minmax(0,1fr));width:min(545px,53vw)}
+.app-shell:not(.reveal-essence) .resource-strip{grid-template-columns:repeat(3,minmax(0,1fr));width:min(410px,45vw)}
+.app-shell:not(.reveal-brains) .resource-strip{grid-template-columns:repeat(2,minmax(0,1fr));width:min(275px,38vw)}
+.app-shell:not(.reveal-biomass) .resource-strip{grid-template-columns:minmax(0,1fr);width:130px}
+.app-shell:not(.has-nest) .quick-nav{display:none}
+.app-shell:not(.has-loot) [data-drawer-tab="loot"],
+.app-shell:not(.has-loot) [data-drawer-view="loot"]{display:none!important}
+.app-shell:not(.has-strategy) .policy-row{display:none}
+.app-shell:not(.has-skills) .skill-section{display:none}
+.app-shell:not(.has-command) #command-button{display:none}
+.app-shell:not(.has-deployed) .world-hud{display:none}
+.app-shell.first-chapter .bottom-dock{width:220px;max-width:calc(100% - 20px);grid-template-columns:1fr;padding:8px}
+.app-shell.first-chapter .unit-grid{grid-template-columns:repeat(1,minmax(0,1fr))}
+.app-shell.first-chapter .bottom-dock .section-heading{margin-bottom:4px}
+.app-shell.first-chapter .unit-card{min-height:54px}
+.app-shell.first-chapter .unit-art{margin-right:6px}
+.app-shell.first-chapter .unit-copy>small{display:block}
+.app-shell.first-chapter .battle-footer{bottom:calc(env(safe-area-inset-bottom) + var(--dock-clearance,95px))}
+@media(max-width:760px){
+ .menu-content{width:calc(100vw - 46px);margin:30px 23px 40px}
+ .menu-backdrop:after{background:linear-gradient(90deg,#0a1011ee,#0a1011aa)}
+ .menu-title{font-size:59px}
+ .menu-story{margin-top:23px}
+ .menu-city{opacity:.45}
+ .main-menu{align-items:flex-start}
+ .app-shell:not(.reveal-biomass) .resource-strip{width:102px}
+ .app-shell.first-chapter .bottom-dock{left:50%;right:auto;width:min(230px,calc(100% - 14px));transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom) + 8px)}
+ .app-shell.first-chapter .battle-footer{bottom:calc(env(safe-area-inset-bottom) + var(--dock-clearance,85px))}
+ .research-item{padding:9px}
+ .research-description p{font-size:8px}
+}
+@media(max-height:580px) and (orientation:landscape){
+ .menu-content{margin:10px 0 20px 8vw}
+ .menu-title{font-size:43px;margin:8px 0}
+ .menu-story{margin:10px 0}
+ .menu-footnote{margin-top:8px}
+}
