@@ -821,3 +821,9 @@ button:disabled:hover{transform:none;box-shadow:none}
  .monitor-telemetry>div{padding:5px 8px}
  .monitor-deploy{min-height:41px}
 }
+
+
+.monitor-mini-control{min-height:33px;min-width:35px;padding:4px 7px;border:1px solid #43584b;border-radius:5px;background:#172722;color:#d1dfc5;font:750 12px monospace;cursor:pointer}
+.monitor-mini-control:hover:not(:disabled){background:#2a4535;border-color:#799981}
+.monitor-mini-control:disabled{opacity:.4;cursor:not-allowed}
+@media(max-width:385px){.monitor-mini-control{min-width:30px;min-height:30px;padding:3px}.monitor-status{padding:4px 5px}}
