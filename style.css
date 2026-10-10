@@ -475,3 +475,54 @@ button:disabled:hover{transform:none;box-shadow:none}
  .bottom-dock{padding:6px}
  .battle-footer{bottom:calc(env(safe-area-inset-bottom) + 196px)}
 }
+
+/* Demo 0.4: action-first, low-clutter gameplay HUD + contextual onboarding. */
+.quick-nav{gap:3px}
+.topright .help-button{min-width:52px;min-height:34px;padding:6px 10px;border-color:var(--line-strong);color:var(--accent);font-weight:750}
+.resource-strip{grid-template-columns:repeat(3,minmax(0,1fr));width:min(410px,48vw)}
+.resource-strip .essence-cell{display:none}
+.mission-mark,.mission-header p{display:none}
+.mission-header{width:min(295px,32vw);min-height:45px;padding:8px 10px}
+.mission-header h1{font-size:14px;margin:3px 0 0}
+.resource-cell{padding:6px 8px}
+.battle-footer{bottom:calc(env(safe-area-inset-bottom) + var(--dock-clearance,170px))}
+.tutorial-card{
+ position:fixed;z-index:17;top:calc(env(safe-area-inset-top) + 192px);
+ left:50%;transform:translateX(-50%);width:min(360px,calc(100vw - 24px));
+ padding:10px 13px;border:1px solid #a2bb7966;border-radius:10px;
+ background:rgba(10,19,15,.94);box-shadow:0 9px 28px #0009;
+ backdrop-filter:blur(12px);pointer-events:auto
+}
+.tutorial-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:4px}
+.tutorial-head span{font-size:9px;color:var(--accent);font-weight:800;letter-spacing:.02em}
+.tutorial-head button{font-size:9px;color:var(--muted);background:none;border:0;padding:5px;min-height:26px}
+.tutorial-head button:hover{color:var(--text)}
+.tutorial-card strong{display:block;font-size:12px;margin:0 0 3px}
+.tutorial-card p{font-size:10px;color:#bbcbb2;margin:0;line-height:1.5}
+.unit-card.locked-unit{opacity:.5;filter:grayscale(.6)}
+.unit-card.locked-unit .unit-copy em{color:var(--muted)}
+.settings-reset{display:block;margin:12px;width:calc(100% - 24px);padding:9px;border-color:#7f5850;color:#e1aba0;background:#291c1c}
+.settings-reset:hover{border-color:#a9796d}
+@media(max-width:760px){
+ .resource-strip{width:min(355px,calc(100% - 92px));grid-template-columns:repeat(3,minmax(0,1fr))}
+ .resource-cell strong{font-size:11px}
+ .topright .help-button{min-width:34px;min-height:32px;padding:4px 6px;font-size:9px}
+ .mission-header{width:min(43vw,210px)}
+ .battle-footer{bottom:calc(env(safe-area-inset-bottom) + var(--dock-clearance,190px))}
+ .tutorial-card{top:calc(env(safe-area-inset-top) + 181px);padding:9px 11px;width:min(330px,calc(100vw - 16px))}
+ .tutorial-card strong{font-size:11px}
+ .tutorial-card p{font-size:9px}
+ .bottom-dock{gap:4px}
+ .unit-card{min-height:48px}
+ .unit-copy>strong small{line-height:1.1}
+}
+@media(max-width:390px){
+ .resource-strip{width:min(290px,calc(100% - 94px))}
+ .resource-cell .resource-icon{display:none}
+ .tutorial-card{top:calc(env(safe-area-inset-top) + 173px)}
+}
+@media(max-height:560px) and (orientation:landscape){
+ .tutorial-card{top:calc(env(safe-area-inset-top) + 135px);left:50%;width:290px;padding:7px 9px}
+ .tutorial-card p{font-size:9px}
+ .battle-footer{bottom:calc(env(safe-area-inset-bottom) + var(--dock-clearance,115px))}
+}
