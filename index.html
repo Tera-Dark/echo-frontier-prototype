@@ -14,11 +14,42 @@
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<div class="app-shell">
+<div class="app-shell menu-open" id="app-shell">
+  <section class="main-menu" id="main-menu" aria-label="Hunger Protocol 开始菜单">
+    <div class="menu-backdrop" aria-hidden="true">
+      <span class="menu-city menu-city-one"></span><span class="menu-city menu-city-two"></span><span class="menu-city menu-city-three"></span>
+      <span class="menu-horizon"></span><span class="menu-warning">QUARANTINE ZONE / 00</span>
+    </div>
+    <div class="menu-content">
+      <div class="menu-brandline"><span class="menu-emblem">☣</span><span>HUNGER PROTOCOL <b>DEMO 0.5</b></span></div>
+      <h1 class="menu-title">尸潮<span>纪元</span></h1>
+      <p class="menu-tagline">人类筑起最后的高墙。你，是墙外的饥饿。</p>
+      <div class="menu-story"><span id="menu-story-kicker">序章 · 零号信号</span><strong id="menu-story-title">第一声饥饿</strong><p id="menu-story-copy">雨后的南湾，某种意识刚刚苏醒。</p></div>
+      <div class="menu-actions" id="menu-actions">
+        <button class="menu-primary" id="menu-new">开始新游戏 <span>↗</span></button>
+        <button class="menu-secondary" id="menu-continue" hidden>继续游戏 <span>→</span></button>
+        <button class="menu-secondary" id="menu-research-open" hidden>巢群研究 <span>⌬</span></button>
+        <button class="menu-quiet" id="menu-settings-open">设置 <span>⚙</span></button>
+      </div>
+      <div class="menu-subpage" id="menu-research-page" hidden>
+        <div class="menu-subpage-header"><h2>进化研究</h2><button class="menu-quiet" data-menu-back>← 返回</button></div>
+        <p class="menu-subpage-note">用吞噬获得的生物质研究新的感染形态。研究成果永久保留。</p>
+        <div id="menu-research-list" class="research-list"></div>
+      </div>
+      <div class="menu-subpage" id="menu-settings-page" hidden>
+        <div class="menu-subpage-header"><h2>游戏设置</h2><button class="menu-quiet" data-menu-back>← 返回</button></div>
+        <label class="menu-check"><input type="checkbox" id="menu-setting-team-highlight" checked> 显示阵营轮廓</label>
+        <label class="menu-check"><input type="checkbox" id="menu-setting-health-bars" checked> 显示生命条</label>
+        <label class="menu-check"><input type="checkbox" id="menu-setting-low-power"> 节能渲染模式</label>
+      </div>
+      <p class="menu-footnote">单人离线战役 · 自动保存局外进度 · 暮色围城原型</p>
+    </div>
+  </section>
+
 <header class="topbar">
   <a class="brand" href="#" aria-label="尸潮纪元">
     <span class="brand-mark"><i></i><i></i><i></i></span>
-    <span class="brand-copy"><strong>尸潮纪元</strong><small>HUNGER PROTOCOL <b>DEMO 0.4</b></small></span>
+    <span class="brand-copy"><strong>尸潮纪元</strong><small>HUNGER PROTOCOL <b>DEMO 0.5</b></small></span>
   </a>
   <nav class="quick-nav" aria-label="游戏面板">
     <button class="quick-nav-button active" data-open-drawer="campaign" title="战区"><span>◎</span><small>战区</small></button>
@@ -27,13 +58,14 @@
   </nav>
   <div class="topright">
     <span class="save-status"><i></i> 本地存档</span>
-    <button class="quiet-button help-button" id="help-button" title="查看新手指引" aria-label="查看新手指引">? 指引</button>
+    <button class="quiet-button help-button" id="help-button" title="查看当前行动目标">? 提示</button>
+    <button class="quiet-button" id="back-to-menu" title="返回开始菜单">☰ 菜单</button>
   </div>
 </header>
 
 <section class="resource-strip" aria-label="资源">
   <div class="resource-cell energy-resource"><span class="resource-icon energy-icon">ϟ</span><div><small>尸能 <em>ENERGY</em></small><strong id="energy-value">100 <i>/ 100</i></strong><div class="meter"><i id="energy-meter"></i></div></div></div>
-  <div class="resource-cell"><span class="resource-icon biomass-icon">◈</span><div><small>生物质 <em>BIOMASS</em></small><strong id="biomass-value">80</strong><div class="meter biomass-meter"><i id="biomass-meter"></i></div></div></div>
+  <div class="resource-cell biomass-resource"><span class="resource-icon biomass-icon">◈</span><div><small>生物质 <em>BIOMASS</em></small><strong id="biomass-value">80</strong><div class="meter biomass-meter"><i id="biomass-meter"></i></div></div></div>
   <div class="resource-cell"><span class="resource-icon brain-icon">✺</span><div><small>脑髓 <em>BRAINS</em></small><strong id="brains-value">0</strong><div class="meter brain-meter"><i id="brains-meter"></i></div></div></div>
   <div class="resource-cell essence-cell"><span class="resource-icon essence-icon">✧</span><div><small>突变精华 <em>ESSENCE</em></small><strong id="essence-value">0</strong><div class="meter essence-meter"><i id="essence-meter"></i></div></div></div>
 </section>
@@ -173,6 +205,10 @@
       <div><span>能量回复</span><b id="nest-regen">2.0/s</b></div>
       <div><span>感染倾向</span><b id="nest-infection">20%</b></div>
     </div>
+    <div class="research-pane">
+      <div class="section-heading"><h2>感染形态研究</h2><span class="muted">永久解锁</span></div>
+      <div id="research-list" class="research-list"></div>
+    </div>
     <div class="upgrade-list">
       <div class="upgrade-row"><span class="upgrade-symbol">⌂</span><div class="upgrade-copy"><strong>扩张巢穴</strong><small>尸群容量 +6</small><em id="capacity-cost">◈ 55</em></div><button class="small-upgrade" id="upgrade-capacity">升级</button></div>
       <div class="upgrade-row"><span class="upgrade-symbol green-symbol">☣</span><div class="upgrade-copy"><strong>感染腺体</strong><small>感染概率 +10%</small><em id="infection-cost">◈ 70</em></div><button class="small-upgrade" id="upgrade-infection">升级</button></div>
@@ -206,11 +242,12 @@
   </section>
 </aside>
 </main>
-<footer class="footer"><span>HUNGER PROTOCOL / DEMO 0.4</span><span>单机原型 · 进度保存在当前浏览器</span></footer>
+<footer class="footer"><span>HUNGER PROTOCOL / DEMO 0.5</span><span>单机原型 · 进度保存在当前浏览器</span></footer>
 </div>
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 <script src="src/core/storage.js"></script>
 <script src="src/core/clock.js"></script>
+<script src="src/core/progression.js"></script>
 <script src="src/render/siege-art.js"></script>
 <script src="game.js"></script>
 <script>
