@@ -210,7 +210,7 @@ function rebuildNavigation(){
  for(const b of barriers)if(!b.destroyed)rects.push({id:b.id,x:b.x-b.w/2,y:b.y-b.h/2,w:b.w,h:b.h});
  navGrid=core.createNavigator({width:W,height:H,obstacles:rects,cell,clearance:margin});
  for(const list of [humans,zombies])for(const e of list){
-  e.path=null;e.pathIndex=0;e.pathTimer=0;e.navGoal=null;e.stuckTime=0;e.targetMemo=null;
+  e.path=null;e.pathIndex=0;e.pathTimer=0;e.navGoal=null;e.stuckTime=0;e.targetMemo=null;e.progressTime=0;e.previousGoalDistance=Infinity;e.navStallCycles=0;
  }
 }
 function findPath(sx,sy,tx,ty){
@@ -416,8 +416,9 @@ function nearestTarget(z){
  const barrier=barriers.find(b=>!b.destroyed);
  if(barrier){
   const d=dist(z,barrier);
-  if(d<Math.max(340,Math.min(W,H)*.88)&&(!shortlist.length||d<shortlist[0].range*2.2))
-   shortlist.push({target:barrier,range:d,priority:.85});
+  const ordered=barrier.focusUntil>missionTime;
+  if(d<Math.max(340,Math.min(W,H)*.88)&&(ordered||!shortlist.length||d<shortlist[0].range*2.2))
+   shortlist.push({target:barrier,range:d,priority:ordered?.42:.85});
  }else if(!shelter.destroyed&&shelter.hp>0&&shelteredCount()>0){
   shortlist.push({target:shelter,range:dist(z,shelter),priority:.85});
  }
@@ -490,6 +491,16 @@ function moveEntity(e,tx,ty,speed,dt,target=null){
  }
  const oldX=e.x,oldY=e.y;
  const moved=core.moveAgent(e,dest.x,dest.y,speed,dt,navGrid,{radius});
+ const remaining=Math.hypot(goal.x-e.x,goal.y-e.y);
+ e.progressTime=(e.progressTime||0)+dt;
+ if(e.progressTime>=.65){
+  if(Number.isFinite(e.previousGoalDistance)&&remaining>e.previousGoalDistance-2&&remaining>8){
+   e.navStallCycles=(e.navStallCycles||0)+1;
+   e.path=null;e.pathTimer=0;
+   if(e.navStallCycles>=2){e.navGoalAge=99;e.stuckTime=Math.max(e.stuckTime||0,.68);}
+  }else e.navStallCycles=0;
+  e.progressTime=0;e.previousGoalDistance=remaining;
+ }
  if(moved){
   e.stuckTime=0;e.lastMoveX=e.x;e.lastMoveY=e.y;
  }else if(Math.hypot(dest.x-e.x,dest.y-e.y)>4){
