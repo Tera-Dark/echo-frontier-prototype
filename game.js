@@ -380,6 +380,8 @@ function castHowl(){
  log("血腥号令：全体尸群暂时加速。");toast("血腥号令！尸群进入狂猎状态。");renderUI();
 }
 function commandHorde(x,y){
+ const gate=barriers.find(b=>!b.destroyed&&Math.hypot(x-b.x,y-b.y)<65*worldScale());
+ if(gate){gate.focusUntil=missionTime+24;x=gate.x;y=gate.y;toast("目标锁定：优先突破避难所防线");}
  const squad=zombies.filter(z=>z.alive);
  if(!squad.length){commandMode=false;updateUI();toast("尸群尚未集结，先部署单位。");return;}
  if(isBlocked(x,y,10)){
@@ -911,8 +913,8 @@ $("zoom-reset").addEventListener("click",()=>{resetCamera();drawWorld();});
 setupMission(true);renderUI();showHelpHint();requestAnimationFrame(mainLoop);
 if(window.__HUNGER_TEST_MODE__===true){
  window.__HUNGER_TEST__={
-  state:()=>({running,paused,missionTime,country,stage,difficulty,endingType,camera:{zoom:camera.zoom,x:camera.x,y:camera.y,maxZoom:camera.maxZoom},shelter:{x:shelter.x,y:shelter.y,hp:shelter.hp,maxHp:shelter.maxHp,destroyed:shelter.destroyed,building:shelter.building?{...shelter.building}:null},buildings:buildings.map(b=>({...b})),humans:humans.map(h=>({x:h.x,y:h.y,alive:h.alive,sheltered:h.sheltered})),zombies:zombies.map(z=>({x:z.x,y:z.y,alive:z.alive}))}),
-  findPath,segmentBlocked,damageShelter,isBlocked,finishMission,selectCountry,resetStage
+  state:()=>({running,paused,missionTime,country,stage,difficulty,endingType,barriers:barriers.map(b=>({...b})),camera:{zoom:camera.zoom,x:camera.x,y:camera.y,maxZoom:camera.maxZoom},shelter:{x:shelter.x,y:shelter.y,hp:shelter.hp,maxHp:shelter.maxHp,destroyed:shelter.destroyed,building:shelter.building?{...shelter.building}:null},buildings:buildings.map(b=>({...b})),humans:humans.map(h=>({x:h.x,y:h.y,alive:h.alive,sheltered:h.sheltered})),zombies:zombies.map(z=>({x:z.x,y:z.y,alive:z.alive}))}),
+  findPath,segmentBlocked,damageShelter,damageBarricade:(id,amount)=>damageBarricade(barriers.find(b=>b.id===id),amount),isBlocked,finishMission,selectCountry,resetStage
  };
 }
 })();
