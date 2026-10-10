@@ -115,9 +115,13 @@ for(const radius of [160,195,225,260]){
  if(spawnSpot)break;
 }
 assert.ok(spawnSpot,"A walkable area must exist for the player to deploy");
-pointer("pointerdown",spawnSpot.x,spawnSpot.y);pointer("pointerup",spawnSpot.x,spawnSpot.y);
-assert.equal(document.getElementById("zombie-count").textContent,"1","The first zombie must be deployed by the player");
+document.getElementById("monitor-deploy").click();
+assert.equal(document.getElementById("zombie-count").textContent,"1","Random deployment must create the first zombie");
 assert.equal(qa.state().encounterStarted,true,"Deploying the first zombie should activate the mission clock");
+assert.equal(qa.killZombieForTest(),true,"Zombie corpses should produce resources");
+assert.ok(qa.state().salvage>0,"Dead zombies produce capped salvage");
+document.getElementById("monitor-deploy").click();
+assert.ok(qa.state().zombies.some(z=>z.alive),"The control room can inject replacement zombies");
 assert.equal(qa.state().tutorialStep,2,"Tutorial should advance after first placement");
 const firstZombiePositions=qa.state().zombies.map(z=>[z.x,z.y]);
 for (let i = 1; i <= 100; i++) runFrame(1000 + i * 40);
@@ -127,15 +131,13 @@ assert.notDeepEqual(latestZombiePositions,firstZombiePositions,"Player-deployed 
 
 // A walker can be killed by defenders; the player must still be able to replenish the horde.
 if(!qa.state().zombies.some(z=>z.alive)){
- pointer("pointerdown",spawnSpot.x,spawnSpot.y);
- pointer("pointerup",spawnSpot.x,spawnSpot.y);
+ document.getElementById("monitor-deploy").click();
 }
 assert.ok(qa.state().zombies.some(z=>z.alive),"Player can deploy reinforcements after losses");
-document.getElementById("command-button").click();
-assert.equal(document.getElementById("command-button").classList.contains("active"), true, "Command mode must activate");
-pointer("pointerdown", 850, 450);
-pointer("pointerup", 850, 450);
-assert.match(document.getElementById("toast").textContent, /(移动指令|目标锁定)/, "Map click in command mode must issue movement");
+const previousCount=qa.state().zombies.length;
+pointer("pointerdown",850,450);pointer("pointerup",850,450);
+assert.equal(qa.state().zombies.length,previousCount,"Monitor image must never directly spawn a zombie");
+assert.ok(document.getElementById("monitor-deploy"),"The control room should have one injection button");
 
 // Touch gestures should zoom without turning the end of a pinch into a deployment.
 const gesturePointer = (type, id, x, y) => {
@@ -175,7 +177,7 @@ assert.equal(document.querySelector('[data-drawer-view="shelter"]').classList.co
 document.getElementById("drawer-close").click();
 pointer("pointerdown", Math.round(1280 * 0.37), Math.round(720 * 0.38));
 pointer("pointerup", Math.round(1280 * 0.37), Math.round(720 * 0.38));
-assert.match(document.getElementById("toast").textContent, /避难所与入口区域禁止投放/, "The shelter interior must reject zombie deployment");
+assert.match(document.getElementById("toast").textContent, /监控模式/, "Clicking the surveillance view must not manually deploy");
 
 const settings = document.getElementById("setting-team-highlight");
 settings.checked = false;
@@ -207,9 +209,15 @@ document.getElementById("overlay-action").click();
 assert.equal(document.querySelector('[data-unit="spitter"]').disabled,true,"Fourth unit must remain locked until the third clear");
 assert.match(document.getElementById("barrier-status").textContent,/防线崩溃/,"HUD should show the demolished barricade");
 
-// Regression: the previous battle's "next/map" overlay action must not leak into a fresh campaign.
-qa.finishMission(true);
-assert.equal(qa.state().endingType,"win","Forced QA win must end the encounter");
+// Partial elimination must NEVER open the next stage.
+const roster=qa.state().humans;
+for(const h of roster.filter(h=>h.kind==="civilian"))assert.equal(qa.neutralizeHumanForTest(h.id),true);
+qa.stepSimulation(1/30);
+assert.notEqual(qa.state().endingType,"win","Living guards prevent early victory");
+assert.equal(qa.state().objectiveTarget,roster.length,"Both guard and civilian count toward total elimination");
+for(const h of qa.state().humans.filter(h=>h.alive))assert.equal(qa.neutralizeHumanForTest(h.id),true);
+qa.stepSimulation(1/30);
+assert.equal(qa.state().endingType,"win","Every remaining human must be eliminated before progression");
 assert.equal(document.querySelector('[data-unit="runner"]').hidden,false,"First clear reveals runner research");
 assert.equal(document.querySelector('[data-unit="runner"]').disabled,true,"Runner must still require paid research");
 assert.equal(document.getElementById("menu-research-open").hidden,false,"First clear must unlock research in menu");
@@ -257,10 +265,12 @@ assert.equal(qa.state().barriers[0].destroyed,true);
 qa.damageShelter(qa.state().shelter.hp);
 assert.ok(qa.state().humans.filter(h=>h.kind==="civilian").every(h=>!h.sheltered),"Destroying shelter must expose all civilians");
 const target=qa.state().objectiveTarget;
-const victims=qa.state().humans.filter(h=>h.kind==="civilian").slice(0,target);
-assert.ok(victims.length>=target,"Enough survivors must spawn to complete objective");
-for(const h of victims)assert.equal(qa.convertHumanForTest(h.id),true);
+for(const h of qa.state().humans.filter(h=>h.kind==="civilian"))assert.equal(qa.convertHumanForTest(h.id),true);
 qa.stepSimulation(1/30);
+assert.notEqual(qa.state().endingType,"win","Infected civilians cannot clear a stage while guards remain");
+for(const h of qa.state().humans.filter(h=>h.alive))assert.equal(qa.neutralizeHumanForTest(h.id),true);
+qa.stepSimulation(1/30);
+assert.equal(qa.state().neutralized,target,"All human entities must count toward completion");
 assert.equal(qa.state().endingType,"win","Meeting all real siege conditions must end the game in victory");
 assert.ok(JSON.parse(window.localStorage.getItem("hunger-protocol-demo-v01")).cleared.pt>=1,"Natural victory must persist progression");
 qa.openMainMenu();
