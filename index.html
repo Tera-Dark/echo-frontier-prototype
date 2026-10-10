@@ -18,7 +18,7 @@
 <header class="topbar">
   <a class="brand" href="#" aria-label="尸潮纪元">
     <span class="brand-mark"><i></i><i></i><i></i></span>
-    <span class="brand-copy"><strong>尸潮纪元</strong><small>HUNGER PROTOCOL <b>DEMO 0.2</b></small></span>
+    <span class="brand-copy"><strong>尸潮纪元</strong><small>HUNGER PROTOCOL <b>DEMO 0.3</b></small></span>
   </a>
   <nav class="quick-nav" aria-label="游戏面板">
     <button class="quick-nav-button active" data-open-drawer="campaign" title="战区"><span>◎</span><small>战区</small></button>
@@ -44,7 +44,7 @@
 <section class="battle-column">
   <div class="mission-header panel">
     <div class="mission-title-wrap">
-      <div class="eyebrow"><span class="live-dot"></span><span id="region-label">战区 01 / 新西兰 · 南湾</span><span class="tag">测试关卡</span></div>
+      <div class="eyebrow"><span class="live-dot"></span><span id="region-label">战区 01 / 新西兰 · 南湾</span><span class="tag">暮色围城</span></div>
       <h1 id="mission-title">海岸镇：零号街区</h1>
       <p id="mission-summary">封锁还没有合拢。让感染扩散，在救援抵达前吞噬街区。</p>
     </div>
@@ -80,7 +80,7 @@
         <span class="eyebrow">本关目标 / OBJECTIVE</span>
         <strong id="objective-title">吞噬或感染 16 名人类</strong>
         <div class="objective-track"><i id="objective-meter"></i></div>
-        <small id="objective-progress">进度 0 / 16 · 存活人类越少，警戒越高</small>
+        <small id="objective-progress">进度 0 / 16 · 存活人类越少，警戒越高</small><small class="barrier-status" id="barrier-status">路障 125 / 125</small>
       </div>
     </div>
   </div>
@@ -97,6 +97,9 @@
       </button>
       <button class="unit-card locked-unit" data-unit="brute">
         <span class="unit-art brute-art"><i></i><b></b></span><span class="unit-copy"><strong>重尸 <small class="unlock-level">巢穴 Lv.2</small></strong><small>破障 · 高耐久</small><em>ϟ 42</em></span><span class="select-indicator">✓</span>
+      </button>
+      <button class="unit-card" data-unit="spitter">
+        <span class="unit-art spitter-art"><i></i><b></b></span><span class="unit-copy"><strong>喷吐者</strong><small>远程 · 腐蚀压制</small><em>ϟ 34</em></span><span class="select-indicator">✓</span>
       </button>
     </div>
     <div class="policy-row">
@@ -204,6 +207,7 @@
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 <script src="src/core/storage.js"></script>
 <script src="src/core/clock.js"></script>
+<script src="src/render/siege-art.js"></script>
 <script src="game.js"></script>
 <script>
 if("serviceWorker" in navigator && location.protocol==="https:"){
