@@ -103,6 +103,12 @@ const latestZombiePositions=qa.state().zombies.map(z=>[z.x,z.y]);
 assert.notEqual(document.getElementById("time-label").textContent, "00:00", "Combat clock must advance");
 assert.notDeepEqual(latestZombiePositions,firstZombiePositions,"Player-deployed zombies must move on the map");
 
+// A walker can be killed by defenders; the player must still be able to replenish the horde.
+if(!qa.state().zombies.some(z=>z.alive)){
+ pointer("pointerdown",spawnSpot.x,spawnSpot.y);
+ pointer("pointerup",spawnSpot.x,spawnSpot.y);
+}
+assert.ok(qa.state().zombies.some(z=>z.alive),"Player can deploy reinforcements after losses");
 document.getElementById("command-button").click();
 assert.equal(document.getElementById("command-button").classList.contains("active"), true, "Command mode must activate");
 pointer("pointerdown", 850, 450);
