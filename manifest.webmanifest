@@ -1,0 +1,20 @@
+{
+  "id": "./",
+  "name": "尸潮纪元：全球猎食",
+  "short_name": "尸潮纪元",
+  "description": "Hunger Protocol — zombie horde strategy",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0a100d",
+  "theme_color": "#0a100d",
+  "icons": [
+    {
+      "src": "assets/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
