@@ -18,18 +18,16 @@
 <header class="topbar">
   <a class="brand" href="#" aria-label="尸潮纪元">
     <span class="brand-mark"><i></i><i></i><i></i></span>
-    <span class="brand-copy"><strong>尸潮纪元</strong><small>HUNGER PROTOCOL <b>DEMO 0.3</b></small></span>
+    <span class="brand-copy"><strong>尸潮纪元</strong><small>HUNGER PROTOCOL <b>DEMO 0.4</b></small></span>
   </a>
   <nav class="quick-nav" aria-label="游戏面板">
     <button class="quick-nav-button active" data-open-drawer="campaign" title="战区"><span>◎</span><small>战区</small></button>
     <button class="quick-nav-button" data-open-drawer="nest" title="尸巢"><span>⌂</span><small>尸巢</small></button>
-    <button class="quick-nav-button" data-open-drawer="loot" title="器官"><span>✧</span><small>器官</small></button>
-        <button class="quick-nav-button" data-open-drawer="shelter" title="避难所"><span>✚</span><small>避难所</small></button>
     <button class="quick-nav-button" data-open-drawer="settings" title="设置"><span>⚙</span><small>设置</small></button>
   </nav>
   <div class="topright">
     <span class="save-status"><i></i> 本地存档</span>
-    <button class="quiet-button" id="reset-game" title="重置本地演示进度">重置</button>
+    <button class="quiet-button help-button" id="help-button" title="查看新手指引" aria-label="查看新手指引">? 指引</button>
   </div>
 </header>
 
@@ -70,11 +68,16 @@
           <span class="overlay-symbol" id="overlay-symbol">☣</span>
           <p class="eyebrow" id="overlay-kicker">FIRST CONTACT</p>
           <h2 id="overlay-title">猎食开始</h2>
-          <p id="overlay-copy">你是尸潮意志：感染街区、撕开外围路障，从避难所入口吞噬人类的最后防线。</p>
+          <p id="overlay-copy">幸存者在避难所内，持枪守卫正在巡逻。你必须亲手投放第一只行尸，开始感染、破门与围猎。</p>
           <button class="primary-button" id="overlay-action">开始围猎 <span>↗</span></button>
         </div>
       </div>
     </div>
+    <aside class="tutorial-card" id="tutorial-card" role="status" aria-live="polite" hidden>
+      <div class="tutorial-head"><span>◉ 新手行动指引</span><button id="tutorial-skip" type="button">跳过指引</button></div>
+      <strong id="tutorial-title">零号行动</strong>
+      <p id="tutorial-copy">点击进入战场，开始从零制造尸潮。</p>
+    </aside>
     <div class="battle-footer">
       <div class="objective">
         <span class="eyebrow">本关目标 / OBJECTIVE</span>
@@ -87,19 +90,19 @@
 
   <div class="bottom-dock" id="bottom-dock">
   <section class="deploy-section">
-    <div class="section-heading"><div><h2>部署尸群</h2></div><span class="muted">选择单位 → 点击街道</span></div>
+    <div class="section-heading"><div><h2>投放尸群</h2></div><span class="muted">选尸种 · 点击地图</span></div>
     <div class="unit-grid">
       <button class="unit-card selected" data-unit="walker">
         <span class="unit-art walker-art"><i></i><b></b></span><span class="unit-copy"><strong>行尸</strong><small>均衡 · 感染基础</small><em>ϟ 12</em></span><span class="select-indicator">✓</span>
       </button>
-      <button class="unit-card" data-unit="runner">
-        <span class="unit-art runner-art"><i></i><b></b></span><span class="unit-copy"><strong>迅猎者</strong><small>高速追击目标</small><em>ϟ 24</em></span><span class="select-indicator">✓</span>
+      <button class="unit-card locked-unit" data-unit="runner" disabled>
+        <span class="unit-art runner-art"><i></i><b></b></span><span class="unit-copy"><strong>迅猎者 <small>通关第 1 关</small></strong><small>高速追击目标</small><em>ϟ 24</em></span><span class="select-indicator">✓</span>
       </button>
-      <button class="unit-card locked-unit" data-unit="brute">
-        <span class="unit-art brute-art"><i></i><b></b></span><span class="unit-copy"><strong>重尸 <small class="unlock-level">巢穴 Lv.2</small></strong><small>破障 · 高耐久</small><em>ϟ 42</em></span><span class="select-indicator">✓</span>
+      <button class="unit-card locked-unit" data-unit="brute" disabled>
+        <span class="unit-art brute-art"><i></i><b></b></span><span class="unit-copy"><strong>重尸 <small class="unlock-level">通关第 2 关</small></strong><small>破障 · 高耐久</small><em>ϟ 42</em></span><span class="select-indicator">✓</span>
       </button>
-      <button class="unit-card" data-unit="spitter">
-        <span class="unit-art spitter-art"><i></i><b></b></span><span class="unit-copy"><strong>喷吐者</strong><small>远程 · 腐蚀压制</small><em>ϟ 34</em></span><span class="select-indicator">✓</span>
+      <button class="unit-card locked-unit" data-unit="spitter" disabled>
+        <span class="unit-art spitter-art"><i></i><b></b></span><span class="unit-copy"><strong>喷吐者 <small>通关第 3 关</small></strong><small>远程 · 腐蚀压制</small><em>ϟ 34</em></span><span class="select-indicator">✓</span>
       </button>
     </div>
     <div class="policy-row">
