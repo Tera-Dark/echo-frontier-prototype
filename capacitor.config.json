@@ -1,0 +1,13 @@
+{
+  "appId": "com.teradark.hungerprotocol",
+  "appName": "Hunger Protocol",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 0
+    }
+  }
+}
