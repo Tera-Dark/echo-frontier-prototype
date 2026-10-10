@@ -53,44 +53,51 @@ function createNavigator({width,height,obstacles=[],cell=15,clearance=6}){
   }
   return result;
  }
+ const routeCache=new Map();
  function findPath(sx,sy,tx,ty){
   const from=nearestFree(sx,sy),to=nearestFree(tx,ty);
   if(from<0||to<0)return[];
   const initial=point(from),finish=point(to);
-  const directGoal=!inside(tx,ty)&&!rayBlocked(initial.x,initial.y,tx,ty)?{x:tx,y:ty}:finish;
-  if(from===to)return[directGoal];
-  if(!rayBlocked(sx,sy,directGoal.x,directGoal.y))return[directGoal];
-  const gx=to%cols,gy=Math.floor(to/cols);
-  const h=id=>{const dx=Math.abs(id%cols-gx),dy=Math.abs(Math.floor(id/cols)-gy);return Math.max(dx,dy)+(Math.SQRT2-1)*Math.min(dx,dy);};
-  const cost=new Float32Array(count);cost.fill(Infinity);cost[from]=0;
-  const parents=new Int32Array(count);parents.fill(-1);
-  const closed=new Uint8Array(count),heap=[];
-  heapPush(heap,{id:from,f:h(from)});let found=false,iterations=0;
-  while(heap.length&&iterations++<count*5){
-   const p=heapPop(heap),cur=p.id;
-   if(closed[cur])continue;
-   if(cur===to){found=true;break;}
-   closed[cur]=1;
-   const x=cur%cols,y=Math.floor(cur/cols);
-   for(const [dx,dy,mul] of DIRS){
-    const nx=x+dx,ny=y+dy;if(nx<0||ny<0||nx>=cols||ny>=rows)continue;
-    const ni=ny*cols+nx;if(blocked[ni]||closed[ni])continue;
-    if(dx&&dy&&(blocked[y*cols+nx]||blocked[ny*cols+x]))continue;
-    const tentative=cost[cur]+mul;if(tentative>=cost[ni])continue;
-    cost[ni]=tentative;parents[ni]=cur;heapPush(heap,{id:ni,f:tentative+h(ni)});
+  const desired=!inside(tx,ty)&&!rayBlocked(finish.x,finish.y,tx,ty)?{x:tx,y:ty}:finish;
+  if(from===to)return[desired];
+  if(!rayBlocked(sx,sy,desired.x,desired.y))return[desired];
+  const key=from+"|"+to;
+  let ids=routeCache.get(key);
+  if(!routeCache.has(key)){
+   const gx=to%cols,gy=Math.floor(to/cols);
+   const h=id=>{const dx=Math.abs(id%cols-gx),dy=Math.abs(Math.floor(id/cols)-gy);return Math.max(dx,dy)+(Math.SQRT2-1)*Math.min(dx,dy);};
+   const cost=new Float32Array(count);cost.fill(Infinity);cost[from]=0;
+   const parents=new Int32Array(count);parents.fill(-1);
+   const closed=new Uint8Array(count),heap=[];
+   heapPush(heap,{id:from,f:h(from)});let found=false,iterations=0;
+   while(heap.length&&iterations++<count*5){
+    const p=heapPop(heap),cur=p.id;
+    if(closed[cur])continue;
+    if(cur===to){found=true;break;}
+    closed[cur]=1;
+    const x=cur%cols,y=Math.floor(cur/cols);
+    for(const [dx,dy,mul] of DIRS){
+     const nx=x+dx,ny=y+dy;if(nx<0||ny<0||nx>=cols||ny>=rows)continue;
+     const ni=ny*cols+nx;if(blocked[ni]||closed[ni])continue;
+     if(dx&&dy&&(blocked[y*cols+nx]||blocked[ny*cols+x]))continue;
+     const tentative=cost[cur]+mul;if(tentative>=cost[ni])continue;
+     cost[ni]=tentative;parents[ni]=cur;heapPush(heap,{id:ni,f:tentative+h(ni)});
+    }
    }
+   ids=[];
+   if(found)for(let id=to;id!==from&&id>=0;id=parents[id])ids.push(id);
+   ids.reverse();routeCache.set(key,ids);
+   if(routeCache.size>320)routeCache.delete(routeCache.keys().next().value);
   }
-  if(!found)return[];
-  const list=[];for(let id=to;id!==from&&id>=0;id=parents[id])list.push(point(id));
-  list.reverse();
+  if(!ids?.length)return[];
+  const list=ids.map(point);
   if(!inside(tx,ty)&&!rayBlocked(finish.x,finish.y,tx,ty))list.push({x:tx,y:ty});
-  if(!list.length)list.push(directGoal);
   const result=[],start=inside(sx,sy)?initial:{x:sx,y:sy};
   let anchor=start,i=0;
   while(i<list.length){
    let best=i;
-   for(let j=list.length-1;j>i;j--){if(!rayBlocked(anchor.x,anchor.y,list[j].x,list[j].y)){best=j;break;}}
-   const next=list[best];result.push(next);anchor=next;i=best+1;
+   for(let k=list.length-1;k>i;k--){if(!rayBlocked(anchor.x,anchor.y,list[k].x,list[k].y)){best=k;break;}}
+   result.push(list[best]);anchor=list[best];i=best+1;
   }
   return result;
  }
@@ -120,7 +127,7 @@ function createNavigator({width,height,obstacles=[],cell=15,clearance=6}){
   }
   return best||closestReachable(sx,sy,rect.x,rect.y);
  }
- return{width:W,height:H,cell,cols,rows,blocked,rects,clearance,inside,rayBlocked,findPath,closestReachable,approachRect,point,nearestFree};
+ return{width:W,height:H,cell,cols,rows,blocked,rects,clearance,inside,rayBlocked,findPath,closestReachable,approachRect,point,nearestFree,cacheSize:()=>routeCache.size};
 }
 function moveAgent(agent,x,y,speed,dt,nav,options={}){
  const radius=options.radius||nav.clearance,step=Math.min(Math.max(0,speed*dt),nav.cell*.45);
