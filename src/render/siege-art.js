@@ -214,6 +214,8 @@ function paintZombie(g,type,hit=false,frame=0){
   r(g,-5,-2,10,2,"#8f5c4c");
  }
 }
+assets.register("human",(c,kind,panic,frame)=>paintHuman(c,kind,panic,frame));
+assets.register("zombie",(c,type,hit,frame)=>paintZombie(c,type,hit,frame));
 assets.register("building",building);
 assets.register("shelter",landmark);
 assets.register("barricade",barricade);
