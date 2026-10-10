@@ -75,8 +75,6 @@ for (const point of route) {
   assert.equal(qa.segmentBlocked(from.x, from.y, point.x, point.y), false, "Smoothed route segments must not cross a building");
   from = point;
 }
-qa.damageShelter(qaState.shelter.maxHp);
-assert.equal(qa.state().shelter.destroyed, true, "Shelter durability must allow the refuge to be breached");
 
 const runFrame = stamp => {
   const callback = queuedFrame;
@@ -173,6 +171,8 @@ assert.ok(gate.hp>0,"Barricade must start intact");
 assert.equal(qa.isBlocked(gate.x,gate.y,1),true,"Intact barricade should block unit movement");
 qa.damageBarricade(gate.id,gate.hp);
 assert.equal(qa.state().barriers[0].destroyed,true,"Barrier should be destroyed at zero HP");
+qa.damageShelter(qa.state().shelter.maxHp);
+assert.equal(qa.state().shelter.destroyed,true,"Shelter must release occupants after its durability is breached");
 assert.equal(qa.isBlocked(gate.x,gate.y,1),false,"Destroyed barricade should stop blocking");
 document.getElementById("overlay-action").click();
 assert.equal(document.querySelector('[data-unit="spitter"]').disabled,true,"Fourth unit must remain locked until the third clear");
