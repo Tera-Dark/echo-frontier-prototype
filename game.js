@@ -826,6 +826,33 @@ function selectDifficulty(value){
  difficulty=Number(value);setupMission(true);
 }
 function showHelpHint(){const hint=$("canvas-hint");hint.classList.remove("fade");setTimeout(()=>hint.classList.add("fade"),7500);}
+const TUTORIAL_STEPS=[
+ ["零号行动","点击「进入战场」，观察避难所和外部巡逻兵。"],
+ ["01 / 亲手制造尸潮","默认选中行尸。点击街道空地投放第一只行尸；拖动地图可以平移。"],
+ ["02 / 指挥目标","点击右上「⌖ 指挥」，再点避难所外的路障，把尸潮引向防线。"],
+ ["03 / 集结破障","持续投放行尸分散火力，观察路障耐久。守卫会开枪，尸群需要不断补充。"],
+ ["04 / 撕开避难所入口","外部路障已破！继续攻击入口耐久，迫使室内幸存者跑出来。"],
+ ["05 / 感染扩张","避难所沦陷后点击下方「感染优先」，尝试把逃出的人类转化成新行尸。"]
+];
+function refreshTutorial(){
+ const el=$("tutorial-card");if(!el)return;
+ if(tutorialActive&&running&&tutorialStep===0)tutorialStep=1;
+ el.hidden=!tutorialActive||ended;
+ if(!tutorialActive||ended)return;
+ const info=TUTORIAL_STEPS[Math.min(tutorialStep,TUTORIAL_STEPS.length-1)];
+ $("tutorial-title").textContent=info[0];$("tutorial-copy").textContent=info[1];
+ $("tutorial-skip").textContent="跳过指引";
+}
+function completeTutorial(){
+ tutorialActive=false;$("tutorial-card").hidden=true;
+ try{localStorage.setItem(TUTORIAL_KEY,"done");}catch(e){}
+}
+function syncDockClearance(){
+ const dock=$("bottom-dock");if(!dock)return;
+ const height=dock.getBoundingClientRect().height;
+ if(height>1)document.documentElement.style.setProperty("--dock-clearance",Math.ceil(height+20)+"px");
+}
+
 
 function setDrawerView(view){
  const panel=[...document.querySelectorAll("[data-drawer-view]")].find(el=>el.dataset.drawerView===view);
@@ -884,7 +911,7 @@ document.querySelectorAll("[data-difficulty]").forEach(b=>b.addEventListener("cl
 document.querySelectorAll("[data-stage]").forEach(b=>b.addEventListener("click",()=>selectStage(b.dataset.stage)));
 $("country-select").addEventListener("change",e=>selectCountry(e.target.value));
 $("policy-feed").addEventListener("click",()=>{policy="feed";updateUI();toast("暴食优先：提高猎食资源收益。");});
-$("policy-infect").addEventListener("click",()=>{policy="infect";updateUI();toast("感染优先：成功感染会增加尸群数量。");});
+$("policy-infect").addEventListener("click",()=>{policy="infect";updateUI();toast("感染优先：成功感染会增加尸群数量。");if(tutorialActive&&tutorialStep>=5)completeTutorial();});
 $("skill-howl").addEventListener("click",castHowl);
 $("skill-spore").addEventListener("click",()=>{
  if(!running||paused||ended){toast("需要在进行中的战斗里使用技能。");return;}
@@ -897,9 +924,11 @@ $("upgrade-infection").addEventListener("click",()=>upgrade("infection"));
 $("upgrade-energy").addEventListener("click",()=>upgrade("energy"));
 $("replay-stage").addEventListener("click",resetStage);
 $("clear-log").addEventListener("click",()=>{$("event-log").innerHTML="";log("现场记录已清空。");});
+$("help-button").addEventListener("click",()=>{tutorialActive=true;tutorialStep=running?1:0;refreshTutorial();if(!running)toast("点击中央「进入战场」，再按指引投放行尸。");});
+$("tutorial-skip").addEventListener("click",()=>{completeTutorial();toast("已关闭指引，点击顶部「?」可重新查看。");});
 $("reset-game").addEventListener("click",()=>{
  if(!confirm("确定清除本地演示存档？巢穴升级和收集的器官会全部丢失。"))return;
- core.clearSave(localStorage);meta=saveDefaults();country="nz";stage=0;difficulty=0;selectedUnit="walker";policy="feed";setupMission(true);$("event-log").innerHTML="";log("巢穴已重置。新的猎食周期开始。");toast("本地存档已重置");
+ core.clearSave(localStorage);meta=saveDefaults();country="nz";stage=0;difficulty=0;selectedUnit="walker";policy="feed";try{localStorage.removeItem(TUTORIAL_KEY);}catch(e){}tutorialActive=true;tutorialStep=0;setupMission(true);$("event-log").innerHTML="";log("巢穴已重置。新的猎食周期开始。");toast("本地存档已重置");
 });
 document.addEventListener("visibilitychange",()=>{if(document.hidden&&running&&!ended){paused=true;$("pause-button").textContent="▶ 继续";updateUI();}});
 document.addEventListener("keydown",e=>{
@@ -915,7 +944,8 @@ document.addEventListener("keydown",e=>{
  else if(e.key.toLowerCase()==="f"&&running&&!ended){$("command-button").click();}
 });
 resizeWorld();
-window.addEventListener("resize",()=>{resizeWorld();drawWorld();});
+window.addEventListener("resize",()=>{resizeWorld();drawWorld();syncDockClearance();});
+if(window.ResizeObserver)new ResizeObserver(syncDockClearance).observe($("bottom-dock"));
 canvas.addEventListener("pointerdown",cameraPointerDown);
 canvas.addEventListener("pointermove",cameraPointerMove);
 canvas.addEventListener("pointerup",cameraPointerUp);
@@ -925,10 +955,10 @@ canvas.addEventListener("contextmenu",e=>e.preventDefault());
 $("zoom-out").addEventListener("click",()=>zoomCamera(camera.zoom/1.15));
 $("zoom-in").addEventListener("click",()=>zoomCamera(camera.zoom*1.15));
 $("zoom-reset").addEventListener("click",()=>{resetCamera();drawWorld();});
-setupMission(true);renderUI();showHelpHint();requestAnimationFrame(mainLoop);
+setupMission(true);renderUI();syncDockClearance();showHelpHint();requestAnimationFrame(mainLoop);
 if(window.__HUNGER_TEST_MODE__===true){
  window.__HUNGER_TEST__={
-  state:()=>({running,paused,missionTime,country,stage,difficulty,endingType,barriers:barriers.map(b=>({...b})),camera:{zoom:camera.zoom,x:camera.x,y:camera.y,maxZoom:camera.maxZoom},shelter:{x:shelter.x,y:shelter.y,hp:shelter.hp,maxHp:shelter.maxHp,destroyed:shelter.destroyed,building:shelter.building?{...shelter.building}:null},buildings:buildings.map(b=>({...b})),humans:humans.map(h=>({x:h.x,y:h.y,alive:h.alive,sheltered:h.sheltered})),zombies:zombies.map(z=>({x:z.x,y:z.y,alive:z.alive}))}),
+  state:()=>({running,paused,missionTime,country,stage,difficulty,endingType,tutorialStep,tutorialActive,neutralized,escaped,objectiveTarget,barriers:barriers.map(b=>({...b})),camera:{zoom:camera.zoom,x:camera.x,y:camera.y,maxZoom:camera.maxZoom},shelter:{x:shelter.x,y:shelter.y,hp:shelter.hp,maxHp:shelter.maxHp,destroyed:shelter.destroyed,building:shelter.building?{...shelter.building}:null},buildings:buildings.map(b=>({...b})),humans:humans.map(h=>({x:h.x,y:h.y,alive:h.alive,sheltered:h.sheltered,kind:h.kind,patrol:!!h.patrol})),zombies:zombies.map(z=>({x:z.x,y:z.y,alive:z.alive}))}),
   findPath,segmentBlocked,damageShelter,damageBarricade:(id,amount)=>damageBarricade(barriers.find(b=>b.id===id),amount),isBlocked,finishMission,selectCountry,resetStage
  };
 }
