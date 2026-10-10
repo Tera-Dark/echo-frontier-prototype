@@ -27,8 +27,8 @@ let shelter={kind:"shelter",building:null,door:{x:0,y:0},x:0,y:0,hp:0,maxHp:0,de
 let W=760,H=600;const STORE=core.SAVE_KEY;
 const COUNTRIES={
  nz:{name:"新西兰 · 南湾",flag:"🇳🇿",theme:"coast",stages:[
-  {title:"暮色围城：零号街区",summary:"夜幕降临，吞噬外围幸存者，寻找避难所防线缺口。",pop:20,guards:2,goal:.62,bonus:"海湾残响"},
-  {title:"公路检查站",summary:"救援车队正通过检查站。击穿路障，切断撤离通道。",pop:23,guards:3,goal:.65,bonus:"军用血袋"},
+  {title:"暮色围城：零号街区",summary:"第一处感染区：一名守卫、一道路障、一间避难所。",pop:8,guards:1,goal:.62,bonus:"海湾残响"},
+  {title:"公路检查站",summary:"守卫封锁了公路。新感染体将决定突破的速度。",pop:15,guards:2,goal:.65,bonus:"军用血袋"},
   {title:"暮色避难所",summary:"人类最后的灯火。击毁入口路障、破门而入，吞噬最后的幸存者。",pop:25,guards:4,goal:.67,bonus:"实验样本"}
  ]},
  pt:{name:"葡萄牙 · 圣维拉",flag:"🇵🇹",theme:"oldtown",stages:[
@@ -125,8 +125,8 @@ function updateProgressiveUI(){
  root.classList.toggle("has-strategy",clears>=1);
  root.classList.toggle("has-skills",clears>=1);
  root.classList.toggle("has-loot",clears>=2);
- root.classList.toggle("has-command",zombies.some(z=>z.alive)||clears>0);
- root.classList.toggle("has-deployed",zombies.some(z=>z.alive));
+ root.classList.toggle("has-command",zombies.some(z=>z.alive)||meta.mutations>0||clears>0);
+ root.classList.toggle("has-deployed",zombies.some(z=>z.alive)||meta.mutations>0);
 }
 function log(message){
  const root=$("event-log"),p=document.createElement("p"),time=document.createElement("i"),text=document.createElement("span");
@@ -975,7 +975,7 @@ function closeMainMenu(){
 }
 function launchCampaign(newGame){
  if(newGame){
-  if(hasCampaignSave()&&(meta.mutations>0||core.clearCount(meta)>0||meta.research.runner)&&!confirm("开始新游戏会覆盖已有的战役进度，确定吗？"))return;
+  if(hasCampaignSave()&&!confirm("开始新游戏会覆盖已有战役存档和研究进度，确定吗？"))return;
   meta=core.defaultSave();country="nz";stage=0;difficulty=0;policy="feed";selectedUnit="walker";
   try{localStorage.removeItem(TUTORIAL_KEY);}catch(e){}
   tutorialActive=true;tutorialStep=0;
