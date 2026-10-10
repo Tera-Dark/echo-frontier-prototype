@@ -3,6 +3,8 @@
    depth is screen-space only and never changes collision or touch anchors. */
 (function(root){
 "use strict";
+const assets=root.HungerAssets;
+if(!assets?.register)throw new Error("Missing HungerAssets catalog");
 const P={
  asphalt:"#262f30",road:"#30383a",edge:"#6b7165",pavement:"#555b53",
  earth:"#303b31",earth2:"#3d4635",moss:"#58624a",dark:"#111a1a",
@@ -146,7 +148,7 @@ function landmark(c,{shelter,barriers}){
  r(c,d.x-20,d.y-23,40*shelter.hp/Math.max(1,shelter.maxHp),3,opened?"#c36e5a":"#aaca89");
  c.fillStyle="#f4d9a6";c.font="bold 10px monospace";c.textAlign="center";c.fillText(opened?"BREACHED":"SHELTER",d.x,d.y-29);
  c.font="bold 9px sans-serif";c.fillStyle="#d0ddb9";c.fillText("入口",d.x,d.y+24);
- (barriers||[]).forEach(x=>barricade(c,x));
+ (barriers||[]).forEach(x=>assets.draw("barricade",c,x));
 }
 function drawScene(c,{w,h,stage,country,buildings,shelter,barriers=[],exits=[],isBlocked=()=>false}){
  const portrait=w/h<.78;
@@ -154,29 +156,26 @@ function drawScene(c,{w,h,stage,country,buildings,shelter,barriers=[],exits=[],i
  const p=country==="pt"?"#967b61":"#75816c";
  for(let i=0;i<17;i++){
   const x=noise(i,stage,43)*w,y=noise(i,stage,12)*h;
-  if(!isBlocked(x,y,8)){r(c,x-2,y+4,16,4,"#17201b");vegetation(c,x,y,5+i%4);}
+  if(!isBlocked(x,y,8)){r(c,x-2,y+4,16,4,"#17201b");assets.draw("vegetation",c,x,y,5+i%4);}
  }
  // Derelict cars stay off fixed building footprints.
- for(const [i,x,y] of [[0,.35,.24],[1,.69,.58],[2,.37,.83]]){
-  if(!isBlocked(w*x,h*y,12))car(c,w*x,h*y,[P.rust,P.cyan,p][i]);
+ for(const [i,asset] of assets.place("vehicle",w,h).entries()){
+  if(!isBlocked(asset.x,asset.y,12))assets.draw("vehicle",c,asset.x,asset.y,[P.rust,P.cyan,p][i]);
  }
  // Power lines and old lighting on the important streets.
- for(const [x,y] of [[.24,.24],[.51,.75],[.77,.51]]){
-  if(!isBlocked(w*x,h*y,4))lamppost(c,w*x,h*y,true);
+ for(const asset of assets.place("lamppost",w,h)){
+  if(!isBlocked(asset.x,asset.y,4))assets.draw("lamppost",c,asset.x,asset.y,asset.variant==="lit");
  }
  const ordered=[...buildings].sort((a,b)=>a.y-b.y);
- ordered.forEach((b,i)=>building(c,b,i,{shelter:!!b.isShelter,stage}));
+ ordered.forEach((b,i)=>assets.draw("building",c,b,i,{shelter:!!b.isShelter,stage}));
  if(shelter.building){
   const b=shelter.building,margin=17;
-  fence(c,b.x-margin,b.y-margin,b.w+2*margin);
-  fence(c,b.x-margin,b.y-margin,b.h+2*margin,true);
+  assets.draw("fence",c,b.x-margin,b.y-margin,b.w+2*margin);
+  assets.draw("fence",c,b.x-margin,b.y-margin,b.h+2*margin,true);
   // The playable doorway remains open and unobscured.
-  landmark(c,{shelter,barriers});
+  assets.draw("shelter",c,{shelter,barriers});
  }
- for(const e of exits){
-  r(c,e.x-9,e.y-8,18,16,"#2e4d45");r(c,e.x-4,e.y-5,8,9,"#89a68a");
-  c.textAlign="center";c.font="bold 8px monospace";c.fillStyle="#dcaf77";c.fillText("EVAC",e.x,e.y-12);
- }
+ for(const e of exits)assets.draw("evac",c,e);
  // Subtle dusk grading; leave open terrain readable for the player.
  const g=c.createLinearGradient(0,0,w,h);
  g.addColorStop(0,"#09252b28");g.addColorStop(.55,"#10192100");g.addColorStop(1,"#110e1d48");
@@ -215,5 +214,16 @@ function paintZombie(g,type,hit=false,frame=0){
   r(g,-5,-2,10,2,"#8f5c4c");
  }
 }
+assets.register("building",building);
+assets.register("shelter",landmark);
+assets.register("barricade",barricade);
+assets.register("vehicle",car);
+assets.register("lamppost",lamppost);
+assets.register("vegetation",vegetation);
+assets.register("fence",fence);
+assets.register("evac",(c,e)=>{
+ r(c,e.x-9,e.y-8,18,16,"#2e4d45");r(c,e.x-4,e.y-5,8,9,"#89a68a");
+ c.textAlign="center";c.font="bold 8px monospace";c.fillStyle="#dcaf77";c.fillText("EVAC",e.x,e.y-12);
+});
 root.HungerArt={palette:P,drawScene,paintHuman,paintZombie};
 })(typeof window!=="undefined"?window:globalThis);
