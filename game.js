@@ -61,7 +61,7 @@ let preferences=core.loadPrefs(localStorage);
 let country="nz",stage=0,difficulty=0,selectedUnit="walker",policy="feed";
 let humans=[],zombies=[],particles=[],floating=[],decor=[],barriers=[];
 let running=false,paused=false,ended=false,endingType="",elapsed=0,lastStamp=0,uiClock=0,saveClock=0,speed=1,howlTime=0,howlCd=0,sporeCd=0,pendingSkill="",spawnId=1,missionTime=0,neutralized=0,escaped=0,casualties=0,alert=0,commandMode=false;
-let objectiveTarget=16,toastClock=0,firstMission=true,initialOverlay=true;
+let objectiveTarget=16,toastClock=0,firstMission=true,initialOverlay=true,reinforcementCalled=false;
 const simulationClock=core.createClock({step:1/30,maxSteps:8});
 let renderClock=0;
 const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
@@ -293,7 +293,7 @@ function resizeWorld(){
 function setupMission(showOverlay=true){
  simulationClock.reset();$("overlay-action").dataset.mode="start";
  worldDirty=true;mapCache=null;resetCamera();syncShelter(true);setupBarricades(true);rebuildNavigation();
- running=false;paused=false;ended=false;endingType="";elapsed=0;missionTime=0;uiClock=0;howlTime=0;howlCd=0;sporeCd=0;pendingSkill="";commandMode=false;neutralized=0;escaped=0;casualties=0;alert=0;particles=[];floating=[];zombies=[];humans=[];spawnId=1;
+ running=false;paused=false;ended=false;endingType="";elapsed=0;missionTime=0;reinforcementCalled=false;uiClock=0;howlTime=0;howlCd=0;sporeCd=0;pendingSkill="";commandMode=false;neutralized=0;escaped=0;casualties=0;alert=0;particles=[];floating=[];zombies=[];humans=[];spawnId=1;
  const s=activeStage(),d=diff();
  const civilianCount=s.pop+d.pop+(stage?2:0);
  objectiveTarget=Math.ceil(civilianCount*(s.goal+d.goal*.12));
@@ -304,8 +304,8 @@ function setupMission(showOverlay=true){
   humans.push({id:"h"+spawnId++,x:p.x,y:p.y,hp:16*d.hp,maxHp:16*d.hp,kind:"civilian",alive:true,sheltered:false,speed:rnd(17,22)*d.speed,attackCd:0,panic:false,infected:0,value:1,seed:rnd(0,100)});
  }
  for(let i=0;i<guardCount;i++){
-  const p=freeSpotAround(hotspot.x,hotspot.y,spawnRadius);
-  humans.push({id:"g"+spawnId++,x:p.x,y:p.y,hp:48*d.hp,maxHp:48*d.hp,kind:"guard",alive:true,speed:rnd(12,15)*d.speed,attackCd:rnd(.2,1),panic:false,infected:0,damage:8*d.hp,range:125,seed:rnd(0,100)});
+  const p=freeSpotAround(shelter.door.x,shelter.door.y,85*worldScale());
+  humans.push({id:"g"+spawnId++,x:p.x,y:p.y,post:{x:p.x,y:p.y},hp:48*d.hp,maxHp:48*d.hp,kind:"guard",alive:true,speed:rnd(12,15)*d.speed,attackCd:rnd(.2,1),panic:false,infected:0,damage:8*d.hp,range:125,seed:rnd(0,100)});
  }
  if(difficulty>=2){
   const p=freeSpotAround(hotspot.x,hotspot.y,spawnRadius);
@@ -469,6 +469,12 @@ function update(dt){
  if(howlCd>0)howlCd=Math.max(0,howlCd-dt);
  if(sporeCd>0)sporeCd=Math.max(0,sporeCd-dt);
  missionTime+=dt;elapsed=missionTime;
+ if(!reinforcementCalled&&missionTime>42&&(stage>0||difficulty>0)&&!shelter.destroyed){
+  reinforcementCalled=true;
+  const p=freeSpotAround(shelter.door.x,shelter.door.y,80*worldScale());
+  humans.push({id:"r"+spawnId++,x:p.x,y:p.y,post:{x:p.x,y:p.y},hp:50*diff().hp,maxHp:50*diff().hp,kind:"guard",alive:true,speed:13,attackCd:.2,panic:false,infected:0,damage:8*diff().hp,range:125,seed:rnd(0,100)});
+  log("警报升级：避难所派出了增援守卫。");toast("⚠ 人类增援抵达！");
+ }
  const liveZ=zombies.filter(z=>z.alive),liveH=humans.filter(h=>h.alive);
  alert=clamp(diff().alert+(liveZ.length>3?1:0)+(neutralized/objectiveTarget>.5?1:0),0,4);
  for(const h of liveH){
@@ -496,7 +502,7 @@ function update(dt){
    }
   }else{
    if(closest&&zd<h.range*worldScale()&&!segmentBlocked(h.x,h.y,closest.x,closest.y)){if(h.attackCd<=0){h.attackCd=h.kind==="elite"?.52:.8;closest.hp-=h.damage;closest.hitFlash=.15;floating.push({x:closest.x,y:closest.y-10,text:"-"+Math.round(h.damage),life:.6,max:.6,color:"#e98779"});particles.push({x:closest.x,y:closest.y,life:.22,max:.22,type:"hit"});if(closest.hp<=0)killZombie(closest);}}
-   else if(closest)moveEntity(h,closest.x,closest.y,h.speed*.6*worldScale(),dt);
+   else if(closest&&zd<160*worldScale()&&(!h.post||dist(h,h.post)<55*worldScale()))moveEntity(h,closest.x,closest.y,h.speed*.6*worldScale(),dt);
   }
  }
  for(const z of liveZ){
@@ -710,7 +716,7 @@ function updateUI(){
  $("brains-value").textContent=Math.floor(meta.brains);$("brains-meter").style.width=Math.min(100,meta.brains*8)+"%";
  $("essence-value").textContent=Math.floor(meta.essence);$("essence-meter").style.width=Math.min(100,meta.essence*10)+"%";
  $("human-count").textContent=aliveHumans();$("zombie-count").textContent=aliveZombies();
- const gate=barriers[0];$("barrier-status").textContent=gate?(gate.destroyed?"突破完毕":("路障 "+Math.ceil(gate.hp)+" / "+gate.maxHp)):"";
+ const gate=barriers[0],phase=gate?.destroyed?"防线崩溃":missionTime>42?"全面戒严":missionTime>15?"警戒升级":"潜伏扩散";$("barrier-status").textContent=gate?(gate.destroyed?phase:(phase+" · 路障 "+Math.ceil(gate.hp)+" / "+gate.maxHp)):"";
  $("shelter-hp").textContent=Math.ceil(shelter.hp)+" / "+shelter.maxHp;$("shelter-meter").style.width=(shelter.hp/Math.max(1,shelter.maxHp)*100)+"%";$("shelter-occupants").textContent=shelteredCount()+" 人";$("shelter-status").textContent=shelter.destroyed?"已被攻破":shelteredCount()?"收容中":"可用";$("shelter-status").classList.toggle("shelter-damaged",shelter.hp/shelter.maxHp<.35);
  $("alert-level").textContent=alert>=3?"极高":alert>=2?"升高":alert>=1?"注意":"低";
  $("alert-level").parentElement.classList.toggle("hot",alert>=2);
