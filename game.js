@@ -64,6 +64,10 @@ let renderClock=0;
 const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
 const rnd=(a,b)=>a+Math.random()*(b-a);
 const worldScale=()=>clamp(Math.min(W/760,H/600),.82,1.85);
+const graphicsPixelRatio=()=>Math.min(window.devicePixelRatio||1,preferences.lowPower?1.2:(window.matchMedia?.("(pointer:coarse)")?.matches?1.5:2));
+function refreshCanvasResolution(){
+ const dpr=graphicsPixelRatio();canvas.width=Math.round(W*dpr);canvas.height=Math.round(H*dpr);ctx.setTransform(dpr,0,0,dpr,0,0);mapCache=null;worldDirty=true;drawWorld();
+}
 function savePreferences(){return core.savePrefs(localStorage,preferences);}
 function cameraLimitsForMap(){return CAMERA_LIMITS[country]?.[stage]||2.4;}
 function clampCamera(){
@@ -252,7 +256,7 @@ function resizeWorld(){
  const oldW=W,oldH=H,rect=canvas.getBoundingClientRect();
  if(!rect.width||!rect.height)return;
  W=rect.width;H=rect.height;
- const dpr=Math.min(window.devicePixelRatio||1,(window.matchMedia?.("(pointer:coarse)")?.matches?1.5:2));
+ const dpr=graphicsPixelRatio();
  canvas.width=Math.round(W*dpr);canvas.height=Math.round(H*dpr);
  ctx.setTransform(dpr,0,0,dpr,0,0);
  if(oldW>0&&oldH>0&&(humans.length||zombies.length)){
@@ -648,7 +652,7 @@ function drawStaticWorld(){
  const g=c.createRadialGradient(W/2,H/2,Math.min(W,H)*.22,W/2,H/2,Math.max(W,H)*.72);g.addColorStop(0,"#06100800");g.addColorStop(1,"#0510086b");c.fillStyle=g;c.fillRect(0,0,W,H);
 }
 function drawWorld(){
- const dpr=Math.min(window.devicePixelRatio||1,(window.matchMedia?.("(pointer:coarse)")?.matches?1.5:2));
+ const dpr=graphicsPixelRatio();
  if(!mapCache||worldDirty||mapCache.width!==canvas.width||mapCache.height!==canvas.height){
   mapCache=document.createElement("canvas");mapCache.width=canvas.width;mapCache.height=canvas.height;
   const mainContext=ctx;ctx=mapCache.getContext("2d");ctx.setTransform(dpr,0,0,dpr,0,0);
@@ -772,7 +776,7 @@ function updateUI(){
  $("skill-spore").querySelector("em").textContent=sporeCd>0?("冷却 "+Math.ceil(sporeCd)+"s"):pendingSkill==="spore"?"点击地图":"脑髓 3";
  $("skill-spore").classList.toggle("skill-pending",pendingSkill==="spore");
  $("command-button").classList.toggle("active",commandMode);$("command-button").setAttribute("aria-pressed",commandMode?"true":"false");$("command-button").disabled=!running||paused||ended;
- $("setting-team-highlight").checked=preferences.teamHighlight;$("setting-health-bars").checked=preferences.healthBars;
+ $("setting-team-highlight").checked=preferences.teamHighlight;$("setting-health-bars").checked=preferences.healthBars;$("setting-low-power").checked=preferences.lowPower;
  $("selected-unit-name").textContent=UNITS[selectedUnit].name+"部署模式";
  $("selected-unit-description").textContent=UNITS[selectedUnit].desc;
  renderCampaignUI();
@@ -828,7 +832,7 @@ function mainLoop(stamp){
  }else simulationClock.reset();
  if(toastClock>0){toastClock-=dt;if(toastClock<=0)$("toast").classList.remove("show");}
  uiClock+=dt;if(uiClock>=.15){updateUI();uiClock=0;}
- renderClock+=dt;const cadence=window.matchMedia?.("(pointer:coarse)")?.matches?1/40:1/60;
+ renderClock+=dt;const cadence=preferences.lowPower?1/30:(window.matchMedia?.("(pointer:coarse)")?.matches?1/40:1/60);
  if(renderClock>=cadence){drawWorld();renderClock=0;}
  requestAnimationFrame(mainLoop);
 }
@@ -896,6 +900,7 @@ $("command-button").addEventListener("click",()=>{
 });
 $("setting-team-highlight").addEventListener("change",e=>{preferences.teamHighlight=e.target.checked;savePreferences();drawWorld();toast(preferences.teamHighlight?"已开启敌我轮廓高亮":"已关闭敌我轮廓高亮");});
 $("setting-health-bars").addEventListener("change",e=>{preferences.healthBars=e.target.checked;savePreferences();drawWorld();toast(preferences.healthBars?"已显示单位生命条":"已隐藏单位生命条");});
+$("setting-low-power").addEventListener("change",e=>{preferences.lowPower=e.target.checked;savePreferences();refreshCanvasResolution();toast(preferences.lowPower?"节能渲染已开启":"节能渲染已关闭");});
 document.querySelectorAll("[data-unit]").forEach(b=>b.addEventListener("click",()=>{
  const id=b.dataset.unit;
  if(id==="brute"&&meta.upgrades.capacity===0&&stage===0){toast("先升级一次扩张巢穴，解锁重尸。");return;}
