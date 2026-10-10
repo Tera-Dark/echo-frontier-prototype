@@ -314,7 +314,7 @@ function resizeWorld(){
  buildings=layoutBuildings();syncShelter(false);setupBarricades(false);rebuildNavigation();worldDirty=true;mapCache=null;clampCamera();
 }
 function setupMission(showOverlay=true){
- simulationClock.reset();$("overlay-action").dataset.mode="start";
+ simulationClock.reset();$("overlay-action").dataset.mode="start";$("overlay-menu").hidden=true;
  running=false;paused=false;ended=false;endingType="";elapsed=0;missionTime=0;reinforcementCalled=false;uiClock=0;howlTime=0;howlCd=0;sporeCd=0;pendingSkill="";commandMode=false;neutralized=0;escaped=0;casualties=0;alert=0;particles=[];floating=[];zombies=[];humans=[];spawnId=1;
  resetCamera();syncShelter(true);setupBarricades(true);rebuildNavigation();worldDirty=true;mapCache=null;
  const st=activeStage(),d=diff(),civilians=st.pop+d.pop+(stage?2:0),guards=st.guards+d.guard;
@@ -638,18 +638,24 @@ function finishMission(win){
   if(first){meta.firstRewards.push(firstKey);meta.biomass+=30;meta.essence+=2;}
   if(difficulty>=2&&Math.random()<.58)dropOrgan(false);
   if(stage>=meta.cleared[country])meta.cleared[country]=Math.min(3,stage+1);
+  meta.lastCountry=country;meta.lastStage=Math.min(2,stage+1);meta.lastDifficulty=difficulty;
+  if(core.clearCount(meta)>=1)meta.discovered.brains=true;
+  if(core.clearCount(meta)>=2)meta.discovered.essence=true;
   persist();log("围猎成功：带回 "+reward+" 生物质、脑髓与突变精华。");
   const newlyUnlocked=[{id:"runner",need:1},{id:"brute",need:2},{id:"spitter",need:3}].filter(u=>beforeUnlock<u.need&&highestCleared()>=u.need).map(u=>UNITS[u.id].name);
-  if(newlyUnlocked.length)log("新尸种已解锁："+newlyUnlocked.join("、")+"！");
+  if(newlyUnlocked.length)log("感染体研究已开放："+newlyUnlocked.join("、")+"。");
+  renderResearchUI();refreshMenu();
   completeTutorial();
-  showOverlayCard("☠","HUNT COMPLETE","街区已沦陷","吞噬/感染 "+neutralized+" 人，逃离 "+escaped+" 人。"+(newlyUnlocked.length?" 解锁新尸种："+newlyUnlocked.join("、")+"。":first?"首次清除奖励已发放。":"战利品已回收。"),stage<2?"继续下一街区":"返回战区");
+  showOverlayCard("☠","HUNT COMPLETE","街区已沦陷","吞噬/感染 "+neutralized+" 人，逃离 "+escaped+" 人。"+(newlyUnlocked.length?" 可研究新尸种："+newlyUnlocked.join("、")+"。":first?"首次清除奖励已发放。":"战利品已回收。"),stage<2?"继续下一街区":"返回战区");
   $("overlay-action").dataset.mode=stage<2?"next":"map";
+  $("overlay-menu").hidden=false;
   toast("围猎完成 · 收获 "+reward+" 生物质");
  }else{
   const small=Math.round(neutralized*2);
   meta.biomass+=small;persist();log("围猎失败：目标撤离过多。尸巢仍保留本次战斗收获。");
   showOverlayCard("⚠","HUNT FAILED","人类突破封锁","已处理 "+neutralized+" 人，仍有 "+aliveHumans()+" 名人类存活。带回部分生物质，可以调整突变后重试。","重新围猎");
   $("overlay-action").dataset.mode="retry";
+  $("overlay-menu").hidden=false;
   toast("目标逃离过多，调整部署后再试");
  }
  renderUI();renderOrgans();drawWorld();
@@ -849,17 +855,17 @@ function mainLoop(stamp){
 function resetStage(){if(running&&!ended&&!confirm("正在进行的猎食将结束，确定重新部署吗？"))return;setupMission(true);toast("战场已重置，尸巢成长保留。");}
 function selectCountry(value){
  if(running){toast("请先结束当前猎食。");$("country-select").value=country;return;}
- country=value;stage=Math.min(meta.cleared[country],2);setupMission(true);renderCampaignUI();
+ country=value;stage=Math.min(meta.cleared[country],2);meta.lastCountry=country;meta.lastStage=stage;persist();setupMission(true);renderCampaignUI();
 }
 function selectStage(value){
  const index=Number(value);
  if(index>(meta.cleared[country]||0)){toast("先清除前一关以解锁这里。");return;}
  if(running){toast("请先结束当前猎食。");return;}
- stage=index;setupMission(true);
+ stage=index;meta.lastCountry=country;meta.lastStage=stage;persist();setupMission(true);
 }
 function selectDifficulty(value){
  if(running&&!ended){toast("战斗进行中无法更改难度。");return;}
- difficulty=Number(value);setupMission(true);
+ difficulty=Number(value);meta.lastDifficulty=difficulty;persist();setupMission(true);
 }
 function showHelpHint(){const hint=$("canvas-hint");hint.classList.remove("fade");setTimeout(()=>hint.classList.add("fade"),7500);}
 const TUTORIAL_STEPS=[
