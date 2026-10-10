@@ -310,7 +310,7 @@ function setupMission(showOverlay=true){
  for(let i=0;i<guards;i++){
   const p=freeSpotAround(shelter.door.x,shelter.door.y,90*worldScale(),13);
   const post=freeSpotAround(p.x,p.y,55*worldScale());
-  humans.push({id:"g"+spawnId++,x:p.x,y:p.y,post:{x:p.x,y:p.y},patrol:[{x:p.x,y:p.y},post],patrolIndex:1,hp:48*d.hp,maxHp:48*d.hp,kind:"guard",alive:true,sheltered:false,speed:rnd(12,15)*d.speed,attackCd:rnd(.2,1),panic:false,infected:0,damage:8*d.hp,range:125,seed:rnd(0,100)});
+  humans.push({id:"g"+spawnId++,x:p.x,y:p.y,post:{x:p.x,y:p.y},patrol:[{x:p.x,y:p.y},post],patrolIndex:1,hp:48*d.hp,maxHp:48*d.hp,kind:"guard",alive:true,sheltered:false,speed:rnd(12,15)*d.speed,attackCd:rnd(.2,1),panic:false,infected:0,damage:(stage===0?4:stage===1?6:8)*d.hp,range:125,seed:rnd(0,100)});
  }
  if(difficulty>=2){
   const p=freeSpotAround(shelter.door.x,shelter.door.y,90*worldScale());
@@ -838,13 +838,19 @@ function refreshTutorial(){
  const el=$("tutorial-card");if(!el)return;
  if(tutorialActive&&running&&tutorialStep===0)tutorialStep=1;
  el.hidden=!tutorialActive||ended;
+ $("canvas-hint").classList.toggle("suppressed",tutorialActive&&!ended);
  if(!tutorialActive||ended)return;
  const info=TUTORIAL_STEPS[Math.min(tutorialStep,TUTORIAL_STEPS.length-1)];
  $("tutorial-title").textContent=info[0];$("tutorial-copy").textContent=info[1];
  $("tutorial-skip").textContent="跳过指引";
+ document.querySelectorAll(".tutorial-focus").forEach(node=>node.classList.remove("tutorial-focus"));
+ const focus=tutorialStep===1?document.querySelector('[data-unit="walker"]'):tutorialStep===2?$("command-button"):tutorialStep===5?$("policy-infect"):null;
+ if(focus)focus.classList.add("tutorial-focus");
 }
 function completeTutorial(){
  tutorialActive=false;$("tutorial-card").hidden=true;
+ document.querySelectorAll(".tutorial-focus").forEach(node=>node.classList.remove("tutorial-focus"));
+ $("canvas-hint").classList.remove("suppressed");
  try{localStorage.setItem(TUTORIAL_KEY,"done");}catch(e){}
 }
 function syncDockClearance(){
