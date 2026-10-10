@@ -282,6 +282,7 @@ function resizeWorld(){
 function setupMission(showOverlay=true){
  simulationClock.reset();$("overlay-action").dataset.mode="start";$("overlay-menu").hidden=true;
  running=false;paused=false;ended=false;endingType="";elapsed=0;missionTime=0;encounterStarted=false;reinforcementCalled=false;uiClock=0;howlTime=0;howlCd=0;sporeCd=0;pendingSkill="";commandMode=false;neutralized=0;escaped=0;casualties=0;alert=0;salvage=0;zombieDeaths=0;particles=[];floating=[];zombies=[];humans=[];spawnId=1;
+ meta.energy=energyMax();
  resetCamera();syncShelter(true);setupBarricades(true);rebuildNavigation();worldDirty=true;mapCache=null;
  const st=activeStage(),d=diff(),civilians=st.pop+d.pop+(stage?2:0),guards=st.guards+d.guard;
  objectiveTarget=civilians+guards+(difficulty>=2?1:0);
@@ -375,6 +376,8 @@ function updateMonitorUI(){
  $("monitor-salvage-count").textContent=salvage+" / "+(SALVAGE_CAP_BASE+stage*9);
  $("monitor-energy-count").textContent=Math.floor(meta.energy);
  $("monitor-stage-name").textContent=activeStage().title;
+ $("monitor-pause").textContent=paused?"▶":"Ⅱ";$("monitor-pause").disabled=!running||ended;
+ $("monitor-speed").textContent="×"+speed;
  const phase=ended?(endingType==="win"?"感染完成":"实验失败"):shelter.destroyed?"避难所沦陷":barriers.every(b=>b.destroyed)?"外围突破":encounterStarted?"感染扩散":"等待投放";
  $("monitor-phase").textContent=phase;
  const msg=ended?endingType==="win"?"全部人类失联。返回控制室研究新的感染体。":"实验失败：尚有幸存者或人员逃脱。回收资源再试。":
@@ -1156,6 +1159,8 @@ function closeDrawer(){
  $("drawer-backdrop").classList.remove("visible");
 }
 $("monitor-deploy").addEventListener("click",deployRandomZombie);
+$("monitor-pause").addEventListener("click",()=>{$("pause-button").click();updateUI();});
+$("monitor-speed").addEventListener("click",()=>{$("speed-button").click();updateUI();});
 $("monitor-unit-select").addEventListener("change",e=>{if(UNITS[e.target.value]&&unitUnlocked(e.target.value)){selectedUnit=e.target.value;renderUI();}});
 $("monitor-research").addEventListener("click",()=>{openMainMenu();showMenuPage("research");});
 $("menu-new").addEventListener("click",()=>launchCampaign(true));
