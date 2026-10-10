@@ -375,13 +375,18 @@ function commandHorde(x,y){
  if(!navGrid)rebuildNavigation();
  const commandGoal=gate?navGrid.approachRect(squad[0].x,squad[0].y,{x:gate.x-gate.w/2,y:gate.y-gate.h/2,w:gate.w,h:gate.h},10):navGrid.closestReachable(squad[0].x,squad[0].y,x,y);
  x=commandGoal.x;y=commandGoal.y;
+ if(!findPath(squad[0].x,squad[0].y,x,y).length&&Math.hypot(squad[0].x-x,squad[0].y-y)>12){
+  commandMode=false;updateUI();toast("目的地不可到达，请改选同一条街道上的空地");return;
+ }
  const radius=Math.min(46,13+squad.length*2.2)*worldScale();
  if(!navGrid)rebuildNavigation();
  squad.forEach((z,i)=>{
   const angle=i*2.399963;
   const ring=Math.sqrt((i+.25)/Math.max(1,squad.length))*radius;
   const preferred=navGrid.closestReachable(z.x,z.y,clamp(x+Math.cos(angle)*ring,18,W-18),clamp(y+Math.sin(angle)*ring,28,H-28));
-  z.moveOrder=preferred;z.path=null;z.pathTimer=0;z.targetMemo=null;
+  const accessible=findPath(z.x,z.y,preferred.x,preferred.y).length||Math.hypot(z.x-preferred.x,z.y-preferred.y)<10;
+  z.moveOrder=accessible?preferred:navGrid.closestReachable(z.x,z.y,x,y);
+  z.path=null;z.pathTimer=0;z.targetMemo=null;
  });
  particles.push({x,y,life:.85,max:.85,type:"command",radius:32*worldScale()});
  commandMode=false;updateUI();
