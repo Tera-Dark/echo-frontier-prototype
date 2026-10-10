@@ -902,6 +902,97 @@ function syncDockClearance(){
 }
 
 
+function hasCampaignSave(){
+ try{return !!localStorage.getItem(core.SAVE_KEY);}catch(e){return false;}
+}
+function renderResearchUI(){
+ for(const root of [$("menu-research-list"),$("research-list")]){
+  if(!root)continue;
+  root.replaceChildren();
+  const available=core.RESEARCH.filter(x=>core.isAvailable(meta,x.id));
+  if(!available.length){
+   const p=document.createElement("p");p.className="research-empty";
+   p.textContent="尚未采集到活性样本。先完成第一处感染区。";root.appendChild(p);continue;
+  }
+  for(const item of available){
+   const owned=core.isResearched(meta,item.id);
+   const card=document.createElement("div");card.className="research-item"+(owned?" researched":"");
+   const body=document.createElement("div");body.className="research-description";
+   const title=document.createElement("strong");title.textContent=item.name+(owned?" · 已完成":"");
+   const sub=document.createElement("small");sub.textContent=item.summary;
+   const lore=document.createElement("p");lore.textContent=item.story;
+   body.append(title,sub,lore);
+   const buy=document.createElement("button");buy.className="research-buy";
+   buy.dataset.research=item.id;buy.disabled=owned||!core.canResearch(meta,item.id);
+   buy.textContent=owned?"已研究":"◈ "+item.cost;
+   buy.title=!owned&&meta.biomass<item.cost?"还需要 "+(item.cost-Math.floor(meta.biomass))+" 生物质":"";
+   card.append(body,buy);root.appendChild(card);
+   buy.addEventListener("click",()=>researchUnit(item.id));
+  }
+ }
+}
+function researchUnit(id){
+ const data=core.RESEARCH.find(x=>x.id===id);
+ if(!data||!core.isAvailable(meta,id)||core.isResearched(meta,id))return;
+ if(!core.canResearch(meta,id)){toast("生物质不足：需要 "+data.cost+"。");return;}
+ meta.biomass-=data.cost;meta.research[id]=true;persist();
+ selectedUnit=id;
+ log("巢群研究成功："+data.name+"。");toast("新尸种已研究："+data.name);
+ renderResearchUI();refreshMenu();renderUI();
+}
+function refreshMenu(){
+ const story=core.storyFor(meta);
+ $("menu-story-kicker").textContent=story.kicker;
+ $("menu-story-title").textContent=story.title;
+ $("menu-story-copy").textContent=story.line+" "+story.goal;
+ const continues=hasCampaignSave()||sessionActive;
+ $("menu-continue").hidden=!continues;
+ $("menu-continue").innerHTML=(sessionActive&&running&&!ended?"返回本局":"继续战役")+' <span>→</span>';
+ $("menu-research-open").hidden=core.clearCount(meta)<1;
+ $("menu-setting-team-highlight").checked=preferences.teamHighlight;
+ $("menu-setting-health-bars").checked=preferences.healthBars;
+ $("menu-setting-low-power").checked=preferences.lowPower;
+ renderResearchUI();
+}
+function showMenuPage(name){
+ $("menu-actions").hidden=name!=="home";
+ $("menu-research-page").hidden=name!=="research";
+ $("menu-settings-page").hidden=name!=="settings";
+ if(name==="research")renderResearchUI();
+}
+function openMainMenu(){
+ menuOpen=true;
+ menuWasPaused=paused;
+ if(running&&!ended)paused=true;
+ $("main-menu").hidden=false;$("app-shell").classList.add("menu-open");
+ closeDrawer();showMenuPage("home");refreshMenu();
+}
+function closeMainMenu(){
+ menuOpen=false;
+ $("app-shell").classList.remove("menu-open");$("main-menu").hidden=true;
+ syncDockClearance();drawWorld();refreshTutorial();
+}
+function launchCampaign(newGame){
+ if(newGame){
+  if(hasCampaignSave()&&(meta.mutations>0||core.clearCount(meta)>0||meta.research.runner)&&!confirm("开始新游戏会覆盖已有的战役进度，确定吗？"))return;
+  meta=core.defaultSave();country="nz";stage=0;difficulty=0;policy="feed";selectedUnit="walker";
+  try{localStorage.removeItem(TUTORIAL_KEY);}catch(e){}
+  tutorialActive=true;tutorialStep=0;
+  persist();
+ }else if(sessionActive&&running&&!ended){
+  closeMainMenu();paused=menuWasPaused;updateUI();return;
+ }else{
+  meta=core.loadSave(localStorage);
+  country=meta.lastCountry;stage=Math.min(meta.lastStage,meta.cleared[country]||0,2);
+  difficulty=meta.lastDifficulty;selectedUnit="walker";policy="feed";
+  tutorialActive=false;
+  try{tutorialActive=localStorage.getItem(TUTORIAL_KEY)!=="done"&&core.clearCount(meta)===0;}catch(e){}
+  tutorialStep=0;
+ }
+ sessionActive=true;menuWasPaused=false;paused=false;speed=1;$("speed-button").textContent="速度 ×1";
+ closeMainMenu();
+ setupMission(false);beginMission();refreshMenu();
+}
 function setDrawerView(view){
  const panel=[...document.querySelectorAll("[data-drawer-view]")].find(el=>el.dataset.drawerView===view);
  if(!panel)return;
