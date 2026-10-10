@@ -59,6 +59,7 @@
   <div class="topright">
     <span class="save-status"><i></i> 本地存档</span>
     <button class="quiet-button help-button" id="help-button" title="查看当前行动目标">? 提示</button>
+    <button class="quiet-button hud-toggle" id="hud-toggle" type="button" aria-expanded="true" title="收起或展开战场信息">◫ 信息</button>
     <button class="quiet-button" id="back-to-menu" title="返回开始菜单">☰ 菜单</button>
   </div>
 </header>
@@ -112,6 +113,7 @@
       <p id="tutorial-copy">点击进入战场，开始从零制造尸潮。</p>
     </aside>
     <div class="battle-footer">
+      <button type="button" class="objective-toggle" id="objective-toggle" aria-expanded="true" title="收起或展开任务信息">任务 <span>⌄</span></button>
       <div class="objective">
         <span class="eyebrow">本关目标 / OBJECTIVE</span>
         <strong id="objective-title">吞噬或感染 16 名人类</strong>
@@ -122,6 +124,7 @@
   </div>
 
   <div class="bottom-dock" id="bottom-dock">
+  <button class="dock-toggle" id="dock-toggle" type="button" aria-expanded="true" title="展开或收起部署和技能面板"><span>⌄</span><small>操作栏</small></button>
   <section class="deploy-section">
     <div class="section-heading"><div><h2>投放尸群</h2></div><span class="muted">选尸种 · 点击地图</span></div>
     <div class="unit-grid">
@@ -249,6 +252,8 @@
 <script src="src/core/storage.js"></script>
 <script src="src/core/clock.js"></script>
 <script src="src/core/progression.js"></script>
+<script src="src/core/navigation.js"></script>
+<script src="src/render/asset-catalog.js"></script>
 <script src="src/render/siege-art.js"></script>
 <script src="game.js"></script>
 <script>
