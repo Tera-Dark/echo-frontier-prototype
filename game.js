@@ -1,6 +1,8 @@
 (function(){
 "use strict";
 const $=id=>document.getElementById(id);
+const core=window.HungerCore;
+if(!core?.loadSave||!core?.createClock)throw new Error("Missing HungerCore runtime modules");
 const canvas=$("world");let ctx=canvas.getContext("2d");
 let mapCache=null,worldDirty=true;
 const SPRITE_CACHE=new Map();
@@ -19,7 +21,7 @@ const CAMERA_LIMITS={nz:[2.35,2.55,2.7],pt:[2.4,2.65,2.85]};
 const camera={zoom:1,minZoom:1,maxZoom:2.35,x:0,y:0};
 let pointerGesture=null;
 let shelter={kind:"shelter",building:null,door:{x:0,y:0},x:0,y:0,hp:0,maxHp:0,destroyed:false};
-let W=760,H=600;const STORE="hunger-protocol-demo-v01";
+let W=760,H=600;const STORE=core.SAVE_KEY;
 const COUNTRIES={
  nz:{name:"新西兰 · 南湾",flag:"🇳🇿",theme:"coast",stages:[
   {title:"海岸镇：零号街区",summary:"封锁还没有合拢。让感染扩散，在救援抵达前吞噬街区。",pop:20,guards:2,goal:.62,bonus:"海湾残响"},
@@ -49,20 +51,19 @@ const ORGANS={
  plague:{name:"瘟疫腺体",rarity:"传奇",cls:"legendary",icon:"✺",desc:"感染成功后，有概率把感染扩散给附近人类。",source:"围猎 / 灭城难度"},
  carapace:{name:"骨甲壳",rarity:"史诗",cls:"epic",icon:"⬟",desc:"尸群最大生命 +25%，重尸攻击伤害额外提高。",source:"检查站 / 隔离区"}
 };
-const saveDefaults=()=>({biomass:80,brains:5,essence:0,energy:100,upgrades:{capacity:0,infection:0,energy:0},inventory:{},equipped:[],cleared:{nz:0,pt:0},firstRewards:[],mutations:0});
-let meta=saveDefaults();
-try{const raw=localStorage.getItem(STORE);if(raw){const loaded=JSON.parse(raw);meta=Object.assign(saveDefaults(),loaded);meta.upgrades=Object.assign(saveDefaults().upgrades,loaded.upgrades||{});meta.inventory=loaded.inventory||{};meta.equipped=loaded.equipped||[];meta.cleared=Object.assign({nz:0,pt:0},loaded.cleared||{});meta.firstRewards=loaded.firstRewards||[];}}catch(e){}
-const PREFS_KEY="hunger-protocol-prefs-v1";
-let preferences={teamHighlight:true,healthBars:true};
-try{preferences=Object.assign({},preferences,JSON.parse(localStorage.getItem(PREFS_KEY)||"{}"));}catch(e){}
+const saveDefaults=core.defaultSave;
+let meta=core.loadSave(localStorage);
+let preferences=core.loadPrefs(localStorage);
 let country="nz",stage=0,difficulty=0,selectedUnit="walker",policy="feed";
 let humans=[],zombies=[],particles=[],floating=[],decor=[];
 let running=false,paused=false,ended=false,endingType="",elapsed=0,lastStamp=0,uiClock=0,saveClock=0,speed=1,howlTime=0,howlCd=0,sporeCd=0,pendingSkill="",spawnId=1,missionTime=0,neutralized=0,escaped=0,casualties=0,alert=0,commandMode=false;
 let objectiveTarget=16,toastClock=0,firstMission=true,initialOverlay=true;
+const simulationClock=core.createClock({step:1/30,maxSteps:8});
+let renderClock=0;
 const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
 const rnd=(a,b)=>a+Math.random()*(b-a);
 const worldScale=()=>clamp(Math.min(W/760,H/600),.82,1.85);
-function savePreferences(){try{localStorage.setItem(PREFS_KEY,JSON.stringify(preferences));}catch(e){}}
+function savePreferences(){return core.savePrefs(localStorage,preferences);}
 function cameraLimitsForMap(){return CAMERA_LIMITS[country]?.[stage]||2.4;}
 function clampCamera(){
  camera.minZoom=1;camera.maxZoom=cameraLimitsForMap();camera.zoom=clamp(camera.zoom,camera.minZoom,camera.maxZoom);
@@ -94,7 +95,7 @@ const aliveHumans=()=>humans.filter(h=>h.alive).length;
 const aliveZombies=()=>zombies.filter(z=>z.alive).length;
 const aliveCivilians=()=>humans.filter(h=>h.alive&&h.kind==="civilian").length;
 const organOwned=id=>(meta.inventory[id]||0)>0;
-function persist(){try{localStorage.setItem(STORE,JSON.stringify(meta));}catch(e){}}
+function persist(){return core.saveSave(localStorage,meta);}
 function log(message){
  const root=$("event-log"),p=document.createElement("p"),time=document.createElement("i"),text=document.createElement("span");
  time.textContent=fmtTime(missionTime);text.textContent=message;p.append(time,text);root.prepend(p);
@@ -221,7 +222,7 @@ function resizeWorld(){
  const oldW=W,oldH=H,rect=canvas.getBoundingClientRect();
  if(!rect.width||!rect.height)return;
  W=rect.width;H=rect.height;
- const dpr=Math.min(window.devicePixelRatio||1,2);
+ const dpr=Math.min(window.devicePixelRatio||1,(window.matchMedia?.("(pointer:coarse)")?.matches?1.5:2));
  canvas.width=Math.round(W*dpr);canvas.height=Math.round(H*dpr);
  ctx.setTransform(dpr,0,0,dpr,0,0);
  if(oldW>0&&oldH>0&&(humans.length||zombies.length)){
@@ -231,6 +232,7 @@ function resizeWorld(){
  buildings=layoutBuildings();syncShelter(false);rebuildNavigation();worldDirty=true;mapCache=null;clampCamera();
 }
 function setupMission(showOverlay=true){
+ simulationClock.reset();$("overlay-action").dataset.mode="start";
  worldDirty=true;mapCache=null;resetCamera();syncShelter(true);rebuildNavigation();
  running=false;paused=false;ended=false;endingType="";elapsed=0;missionTime=0;uiClock=0;howlTime=0;howlCd=0;sporeCd=0;pendingSkill="";commandMode=false;neutralized=0;escaped=0;casualties=0;alert=0;particles=[];floating=[];zombies=[];humans=[];spawnId=1;
  const s=activeStage(),d=diff();
@@ -555,7 +557,7 @@ function moveToNext(){
  if(mode==="map"){showToastMap();return;}
  beginMission();
 }
-function showToastMap(){hideOverlay();running=false;ended=false;paused=false;updateCampaignUI();setupMission(true);}
+function showToastMap(){hideOverlay();running=false;ended=false;paused=false;setupMission(true);renderCampaignUI();}
 function drawBuilding(c,b,i,p){
  c.save();
  c.fillStyle=p.shadow;c.fillRect(b.x+4,b.y+6,b.w,b.h);
@@ -616,7 +618,7 @@ function drawStaticWorld(){
  const g=c.createRadialGradient(W/2,H/2,Math.min(W,H)*.22,W/2,H/2,Math.max(W,H)*.72);g.addColorStop(0,"#06100800");g.addColorStop(1,"#0510086b");c.fillStyle=g;c.fillRect(0,0,W,H);
 }
 function drawWorld(){
- const dpr=Math.min(window.devicePixelRatio||1,2);
+ const dpr=Math.min(window.devicePixelRatio||1,(window.matchMedia?.("(pointer:coarse)")?.matches?1.5:2));
  if(!mapCache||worldDirty||mapCache.width!==canvas.width||mapCache.height!==canvas.height){
   mapCache=document.createElement("canvas");mapCache.width=canvas.width;mapCache.height=canvas.height;
   const mainContext=ctx;ctx=mapCache.getContext("2d");ctx.setTransform(dpr,0,0,dpr,0,0);
@@ -789,14 +791,15 @@ function renderOrgans(){
 function renderUI(){updateUI();renderOrgans();}
 function mainLoop(stamp){
  if(!lastStamp)lastStamp=stamp;
- let dt=Math.min(.04,(stamp-lastStamp)/1000||0);lastStamp=stamp;
+ const dt=Math.min(.12,Math.max(0,(stamp-lastStamp)/1000||0));lastStamp=stamp;
  if(running&&!paused&&!ended){
-  const simDt=dt*speed;update(simDt);
+  simulationClock.advance(dt*speed,step=>{if(running&&!paused&&!ended)update(step);});
   saveClock+=dt;if(saveClock>3){persist();saveClock=0;}
- }
+ }else simulationClock.reset();
  if(toastClock>0){toastClock-=dt;if(toastClock<=0)$("toast").classList.remove("show");}
  uiClock+=dt;if(uiClock>=.15){updateUI();uiClock=0;}
- drawWorld();
+ renderClock+=dt;const cadence=window.matchMedia?.("(pointer:coarse)")?.matches?1/40:1/60;
+ if(renderClock>=cadence){drawWorld();renderClock=0;}
  requestAnimationFrame(mainLoop);
 }
 function resetStage(){if(running&&!ended&&!confirm("正在进行的猎食将结束，确定重新部署吗？"))return;setupMission(true);toast("战场已重置，尸巢成长保留。");}
@@ -888,7 +891,7 @@ $("replay-stage").addEventListener("click",resetStage);
 $("clear-log").addEventListener("click",()=>{$("event-log").innerHTML="";log("现场记录已清空。");});
 $("reset-game").addEventListener("click",()=>{
  if(!confirm("确定清除本地演示存档？巢穴升级和收集的器官会全部丢失。"))return;
- localStorage.removeItem(STORE);meta=saveDefaults();country="nz";stage=0;difficulty=0;selectedUnit="walker";policy="feed";setupMission(true);$("event-log").innerHTML="";log("巢穴已重置。新的猎食周期开始。");toast("本地存档已重置");
+ core.clearSave(localStorage);meta=saveDefaults();country="nz";stage=0;difficulty=0;selectedUnit="walker";policy="feed";setupMission(true);$("event-log").innerHTML="";log("巢穴已重置。新的猎食周期开始。");toast("本地存档已重置");
 });
 document.addEventListener("visibilitychange",()=>{if(document.hidden&&running&&!ended){paused=true;$("pause-button").textContent="▶ 继续";updateUI();}});
 document.addEventListener("keydown",e=>{if(e.key==="Escape"){if($("management-drawer").classList.contains("open"))closeDrawer();if(pendingSkill){pendingSkill="";$("canvas-hint").textContent="选择单位，再点击地图部署；可再次点击「指挥」移动尸群";toast("已取消技能瞄准。");}if(commandMode){commandMode=false;updateUI();toast("已取消指挥模式。");}}});
