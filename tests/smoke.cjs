@@ -33,12 +33,20 @@ let queuedFrame = null;
 window.requestAnimationFrame = callback => { queuedFrame = callback; return 1; };
 window.confirm = () => true;
 window.__HUNGER_TEST_MODE__ = true;
-for (const coreFile of ["src/core/storage.js", "src/core/clock.js", "src/core/progression.js", "src/render/siege-art.js"]) {
+for (const coreFile of ["src/core/storage.js", "src/core/clock.js", "src/core/progression.js", "src/core/navigation.js", "src/render/asset-catalog.js", "src/render/siege-art.js"]) {
  window.eval(fs.readFileSync(path.join(__dirname, "..", coreFile), "utf8"));
 }
 window.eval(source);
 
 const overlay = document.getElementById("battle-overlay");
+// Battlefield panels collapse independently without removing deployment.
+for(const [id,key] of [["dock-toggle","dock"],["hud-toggle","hud"],["objective-toggle","objective"]]){
+ const el=document.getElementById(id),before=el.getAttribute("aria-expanded");
+ el.click();assert.notEqual(el.getAttribute("aria-expanded"),before,id+" must toggle");
+ el.click();assert.equal(el.getAttribute("aria-expanded"),before,id+" must restore");
+}
+assert.ok(document.querySelector('[data-unit="walker"]'),"Deploy card survives compact mode");
+assert.equal(typeof window.HungerCore.createNavigator,"function");
 const menu=document.getElementById("main-menu");
 assert.equal(menu.hidden,false,"Title screen must show before the player starts");
 assert.equal(document.getElementById("app-shell").classList.contains("menu-open"),true);
@@ -172,11 +180,12 @@ const settings = document.getElementById("setting-team-highlight");
 settings.checked = false;
 settings.dispatchEvent(new window.Event("change", { bubbles: true }));
 assert.equal(JSON.parse(window.localStorage.getItem("hunger-protocol-prefs-v1")).teamHighlight, false, "Display preference must persist");
-assert.ok(source.includes("function findPath") && source.includes("function rebuildNavigation"), "Grid pathfinding must be wired into movement");
+assert.ok(source.includes("function findPath") && source.includes("function rebuildNavigation") && source.includes("core.moveAgent") && source.includes("navGrid.approachRect"), "Shared clearance-aware navigation and anti-stuck movement must drive units");
 assert.ok(source.includes("const SPRITE_DEFS=") && source.includes("function getSpriteOutline") && source.includes("function drawAnchoredSprite"), "Reusable anchored sprite manager must be present");
 assert.ok(source.includes("const CITY_PALETTES=") && source.includes("art.drawScene") && source.includes("function setupBarricades") && source.includes("function damageBarricade"), "Siege rendering and interactive barricades must use shared scene and obstacle systems");
 assert.ok((fs.readFileSync(path.join(__dirname, "..", "style.css"), "utf8").match(/\{/g) || []).length < 700, "UI rules should stay bounded while the menu is introduced");
 assert.ok(window.HungerArt.drawScene&&window.HungerArt.paintZombie&&window.HungerArt.paintHuman, "Pixel art renderer must load from shared assets");
+assert.ok(window.HungerAssets.list().some(a=>a.id==="building")&&window.HungerAssets.list().some(a=>a.id==="barricade"),"All scenery assets must be cataloged");
 assert.equal(document.querySelectorAll("[data-unit]").length,4,"The demo must offer four distinct infected classes");
 assert.ok(document.querySelector(".barrier-status"),"Gate durability needs on-screen feedback");
 assert.ok(source.includes("function isShelterRestricted") && source.includes("入口区域禁止投放"), "Shelter and entrance must reject deployment");
