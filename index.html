@@ -54,7 +54,7 @@
   <div class="battle-panel panel">
     <div class="battle-toolbar">
       <div class="battle-state"><span class="state-led" id="state-led"></span><strong id="battle-state">等待尸群部署</strong><small id="time-label">00:00</small></div>
-      <div class="battle-actions"><button class="mini-button command-button" id="command-button" title="指挥尸群" aria-label="指挥尸群" aria-pressed="false">⌖ <span class="command-label">指挥</span></button><button class="mini-button" id="pause-button" disabled>Ⅱ 暂停</button><button class="mini-button" id="speed-button">速度 ×1</button></div>
+      <div class="battle-actions"><button class="mini-button command-button" id="command-button" title="指挥尸群：点击路障可集中突破" aria-label="指挥尸群" aria-pressed="false">⌖ <span class="command-label">指挥</span></button><button class="mini-button" id="pause-button" disabled>Ⅱ 暂停</button><button class="mini-button" id="speed-button">速度 ×1</button></div>
     </div>
     <div class="canvas-wrap" id="canvas-wrap">
       <canvas id="world" width="760" height="600" aria-label="城市战场，点击地图选择尸群部署位置"></canvas>
@@ -64,13 +64,13 @@
         <span class="hud-chip warning-chip"><i class="hud-dot alert-dot"></i><b id="alert-level">低</b> 警戒</span>
       </div>
       <div class="camera-controls"><button id="zoom-out" aria-label="缩小">−</button><span id="zoom-level">100%</span><button id="zoom-in" aria-label="放大">+</button><button id="zoom-reset" aria-label="重置视角">定位</button></div>
-      <div class="canvas-hint" id="canvas-hint">滚轮 / 双指缩放，拖动平移；轻触空地部署尸群</div>
+      <div class="canvas-hint" id="canvas-hint">滚轮 / 双指缩放 · 点击空地投放 · 指挥模式点击路障集中突破</div>
       <div class="battle-overlay" id="battle-overlay">
         <div class="overlay-card">
           <span class="overlay-symbol" id="overlay-symbol">☣</span>
           <p class="eyebrow" id="overlay-kicker">FIRST CONTACT</p>
           <h2 id="overlay-title">猎食开始</h2>
-          <p id="overlay-copy">在城市封锁前建立第一支尸群。你需要吞噬或感染足够多的人类。</p>
+          <p id="overlay-copy">你是尸潮意志：感染街区、撕开外围路障，从避难所入口吞噬人类的最后防线。</p>
           <button class="primary-button" id="overlay-action">开始围猎 <span>↗</span></button>
         </div>
       </div>
