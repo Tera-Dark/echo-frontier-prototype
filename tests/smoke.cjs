@@ -67,6 +67,9 @@ assert.ok(population.some(h=>h.kind==="civilian"),"First map must have civilians
 assert.ok(population.filter(h=>h.kind==="civilian").every(h=>h.sheltered),"All civilians must initially be sheltered");
 assert.ok(population.filter(h=>!h.sheltered).every(h=>["guard","elite"].includes(h.kind)&&h.patrol),"Only armed patrolling defenders may be outside");
 assert.equal(qa.state().tutorialStep,1,"First-time onboarding must guide the first placement");
+qa.stepSimulation(2);
+assert.equal(qa.state().missionTime,0,"Looking around before deploying must not consume the mission timer");
+assert.equal(qa.state().encounterStarted,false,"Battle starts only with the first player-made zombie");
 assert.equal(document.querySelector('[data-unit="runner"]').disabled,true,"Runner should start locked");
 assert.equal(document.querySelector('[data-unit="brute"]').disabled,true,"Brute should start locked");
 assert.equal(document.querySelector('[data-unit="spitter"]').disabled,true,"Spitter should start locked");
@@ -105,6 +108,7 @@ for(const radius of [160,195,225,260]){
 assert.ok(spawnSpot,"A walkable area must exist for the player to deploy");
 pointer("pointerdown",spawnSpot.x,spawnSpot.y);pointer("pointerup",spawnSpot.x,spawnSpot.y);
 assert.equal(document.getElementById("zombie-count").textContent,"1","The first zombie must be deployed by the player");
+assert.equal(qa.state().encounterStarted,true,"Deploying the first zombie should activate the mission clock");
 assert.equal(qa.state().tutorialStep,2,"Tutorial should advance after first placement");
 const firstZombiePositions=qa.state().zombies.map(z=>[z.x,z.y]);
 for (let i = 1; i <= 100; i++) runFrame(1000 + i * 40);
