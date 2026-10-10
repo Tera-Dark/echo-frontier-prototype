@@ -416,12 +416,12 @@ function nearestTarget(z){
  for(const h of humans){if(!h.alive||h.sheltered)continue;const d=dist(z,h);if(d<best){best=d;found=h;}}
  const barrier=barriers.find(b=>!b.destroyed);
  if(barrier){
-  const d=dist(z,barrier),forcing=(z.type==="brute"||z.type==="spitter"||barrier.focusUntil>missionTime);
-  if(d<=(forcing?230:95)&&d<(forcing?best*1.55:best*.77)){found=barrier;best=d;}
+  const d=dist(z,barrier);
+  if(d<Math.max(310,Math.min(W,H)*.86)&&(d<best*2||!found)){found=barrier;best=d;}
  }
- if(!shelter.destroyed&&shelter.hp>0&&shelteredCount()>0){
+ if(!barrier&&!shelter.destroyed&&shelter.hp>0&&shelteredCount()>0){
   const d=dist(z,shelter);
-  if(d<best){found=shelter;best=d;}
+  if(d<best*2||!found){found=shelter;best=d;}
  }
  return found;
 }
@@ -471,7 +471,7 @@ function update(dt){
  if(howlCd>0)howlCd=Math.max(0,howlCd-dt);
  if(sporeCd>0)sporeCd=Math.max(0,sporeCd-dt);
  missionTime+=dt;elapsed=missionTime;
- if(!reinforcementCalled&&missionTime>42&&(stage>0||difficulty>0)&&!shelter.destroyed){
+ if(!reinforcementCalled&&missionTime>55&&(stage>0||difficulty>0)&&!shelter.destroyed){
   reinforcementCalled=true;
   const p=freeSpotAround(shelter.door.x,shelter.door.y,80*worldScale());
   humans.push({id:"r"+spawnId++,x:p.x,y:p.y,post:{x:p.x,y:p.y},hp:50*diff().hp,maxHp:50*diff().hp,kind:"guard",alive:true,speed:13,attackCd:.2,panic:false,infected:0,damage:8*diff().hp,range:125,seed:rnd(0,100)});
@@ -504,7 +504,8 @@ function update(dt){
    }
   }else{
    if(closest&&zd<h.range*worldScale()&&!segmentBlocked(h.x,h.y,closest.x,closest.y)){if(h.attackCd<=0){h.attackCd=h.kind==="elite"?.52:.8;closest.hp-=h.damage;closest.hitFlash=.15;floating.push({x:closest.x,y:closest.y-10,text:"-"+Math.round(h.damage),life:.6,max:.6,color:"#e98779"});particles.push({x:closest.x,y:closest.y,life:.22,max:.22,type:"hit"});if(closest.hp<=0)killZombie(closest);}}
-   else if(closest&&zd<160*worldScale()&&(!h.post||dist(h,h.post)<55*worldScale()))moveEntity(h,closest.x,closest.y,h.speed*.6*worldScale(),dt);
+   else if(closest&&zd<145*worldScale()&&(!h.post||dist(h,h.post)<55*worldScale()))moveEntity(h,closest.x,closest.y,h.speed*.6*worldScale(),dt);
+   else if(h.patrol?.length){const stop=h.patrol[h.patrolIndex||0];if(dist(h,stop)<10*worldScale())h.patrolIndex=(h.patrolIndex+1)%h.patrol.length;else moveEntity(h,stop.x,stop.y,h.speed*.65*worldScale(),dt);}
   }
  }
  for(const z of liveZ){
@@ -544,11 +545,12 @@ function update(dt){
  }
  particles.forEach(p=>p.life-=dt);particles=particles.filter(p=>p.life>0);
  floating.forEach(p=>{p.life-=dt;p.y-=14*dt;});floating=floating.filter(p=>p.life>0);
- if(neutralized>=objectiveTarget&&(stage!==2||barriers.every(b=>b.destroyed))){finishMission(true);return;}
- if(missionTime>=(stage===2?155:110)){
-  finishMission(neutralized>=Math.ceil(objectiveTarget*.78));return;
+ if(neutralized>=objectiveTarget&&shelter.destroyed&&barriers.every(b=>b.destroyed)){finishMission(true);return;}
+ if(missionTime>=(stage===2?230:195)){
+  finishMission(neutralized>=objectiveTarget&&shelter.destroyed);return;
  }
- if(aliveHumans()===0&&neutralized>=Math.ceil(objectiveTarget*.8)){finishMission(true);return;}
+ if(aliveHumans()===0){finishMission(neutralized>=objectiveTarget&&shelter.destroyed);return;}
+ if(shelter.destroyed&&escaped>Math.max(5,humans.filter(h=>h.kind==="civilian").length-objectiveTarget+2)){finishMission(false);return;}
  if(aliveZombies()===0&&meta.energy<12&&missionTime>25&&aliveHumans()>0){
   // Still allow energy regeneration and new deployments; no fail state here.
  }
@@ -611,14 +613,18 @@ function finishMission(win){
  if(ended)return;ended=true;running=false;paused=false;endingType=win?"win":"fail";$("pause-button").disabled=true;$("state-led").classList.remove("active");
  const firstKey=country+":"+stage;
  if(win){
+  const beforeUnlock=highestCleared();
   const reward=Math.round((18+neutralized*1.35+stage*8)*diff().reward);
   meta.biomass+=reward;meta.brains+=Math.round(3+difficulty*1.5);meta.essence+=Math.max(1,difficulty);
   const first=!meta.firstRewards.includes(firstKey);
   if(first){meta.firstRewards.push(firstKey);meta.biomass+=30;meta.essence+=2;}
   if(difficulty>=2&&Math.random()<.58)dropOrgan(false);
-  if(stage>=meta.cleared[country])meta.cleared[country]=Math.min(2,stage+1);
+  if(stage>=meta.cleared[country])meta.cleared[country]=Math.min(3,stage+1);
   persist();log("围猎成功：带回 "+reward+" 生物质、脑髓与突变精华。");
-  showOverlayCard("☠","HUNT COMPLETE","街区已沦陷","吞噬/感染 "+neutralized+" 人，逃离 "+escaped+" 人。"+(first?"首次清除奖励已发放。":"战利品已回收。"),stage<2?"继续下一街区":"返回战区");
+  const newlyUnlocked=[{id:"runner",need:1},{id:"brute",need:2},{id:"spitter",need:3}].filter(u=>beforeUnlock<u.need&&highestCleared()>=u.need).map(u=>UNITS[u.id].name);
+  if(newlyUnlocked.length)log("新尸种已解锁："+newlyUnlocked.join("、")+"！");
+  completeTutorial();
+  showOverlayCard("☠","HUNT COMPLETE","街区已沦陷","吞噬/感染 "+neutralized+" 人，逃离 "+escaped+" 人。"+(newlyUnlocked.length?" 解锁新尸种："+newlyUnlocked.join("、")+"。":first?"首次清除奖励已发放。":"战利品已回收。"),stage<2?"继续下一街区":"返回战区");
   $("overlay-action").dataset.mode=stage<2?"next":"map";
   toast("围猎完成 · 收获 "+reward+" 生物质");
  }else{
@@ -722,13 +728,13 @@ function updateUI(){
  $("shelter-hp").textContent=Math.ceil(shelter.hp)+" / "+shelter.maxHp;$("shelter-meter").style.width=(shelter.hp/Math.max(1,shelter.maxHp)*100)+"%";$("shelter-occupants").textContent=shelteredCount()+" 人";$("shelter-status").textContent=shelter.destroyed?"已被攻破":shelteredCount()?"收容中":"可用";$("shelter-status").classList.toggle("shelter-damaged",shelter.hp/shelter.maxHp<.35);
  $("alert-level").textContent=alert>=3?"极高":alert>=2?"升高":alert>=1?"注意":"低";
  $("alert-level").parentElement.classList.toggle("hot",alert>=2);
- $("time-label").textContent=fmtTime(missionTime);$("battle-state").textContent=ended?(endingType==="win"?"街区已沦陷":"围猎失败"):running?(paused?"战斗已暂停":"尸群正在猎食"):"等待尸群部署";
+ $("time-label").textContent=fmtTime(missionTime);$("battle-state").textContent=ended?(endingType==="win"?"街区已沦陷":"围猎失败"):running?(paused?"战斗已暂停":aliveZombies()?"尸潮进攻中":"等待玩家投放"):"等待围猎开始";
  $("state-led").classList.toggle("active",running&&!paused);
  $("pause-button").disabled=!running||ended;$("pause-button").textContent=paused?"▶ 继续":"Ⅱ 暂停";
  $("speed-button").textContent="速度 ×"+speed;
  $("current-capacity").textContent=aliveZombies();$("max-capacity").textContent=capacity();
  const progress=clamp(neutralized/objectiveTarget,0,1);
- $("objective-meter").style.width=(progress*100)+"%";$("objective-progress").textContent="进度 "+neutralized+" / "+objectiveTarget+" · 逃离 "+escaped+" · 目标越少，警戒越高";
+ $("objective-meter").style.width=(progress*100)+"%";$("objective-progress").textContent="已处理 "+neutralized+" / "+objectiveTarget+" · 收容 "+shelteredCount()+" · 撤离 "+escaped;
  $("nest-capacity").textContent=capacity();$("nest-regen").textContent=energyRate().toFixed(1)+"/s";$("nest-infection").textContent=Math.round(infectionChance()*100)+"%";
  $("nest-level").textContent="LV. "+(1+Object.values(meta.upgrades).reduce((a,b)=>a+b,0));
  const costs={capacity:55+meta.upgrades.capacity*42,infection:70+meta.upgrades.infection*52,energy:65+meta.upgrades.energy*48};
@@ -754,7 +760,7 @@ function renderCampaignUI(){
  $("mission-title").textContent=s.title;$("mission-summary").textContent=s.summary;
  $("mission-number").textContent=String(stage+1).padStart(2,"0");
  $("difficulty-desc").textContent=d.label;$("reward-multiplier").textContent="×"+d.reward.toFixed(1);
- $("objective-title").textContent="吞噬或感染 "+objectiveTarget+" 名人类";
+ $("objective-title").textContent="破门并吞噬 / 感染 "+objectiveTarget+" 名人类";
  document.querySelectorAll("[data-stage]").forEach(b=>{
   const index=Number(b.dataset.stage),unlocked=index<=(meta.cleared[country]||0);
   b.classList.toggle("active",index===stage);b.classList.toggle("locked-stage",!unlocked);
@@ -764,9 +770,10 @@ function renderCampaignUI(){
  document.querySelectorAll("[data-difficulty]").forEach(b=>{b.classList.toggle("active",Number(b.dataset.difficulty)===difficulty);b.disabled=running;});
  $("country-select").value=country;$("country-select").disabled=running;
  document.querySelectorAll("[data-unit]").forEach(b=>{
-  const u=b.dataset.unit,unlocked=u!=="brute"||meta.upgrades.capacity>0||stage>0;
+  const u=b.dataset.unit,unlocked=unitUnlocked(u);
   b.classList.toggle("selected",selectedUnit===u);b.classList.toggle("locked-unit",!unlocked);b.disabled=!unlocked;
   b.setAttribute("aria-pressed",selectedUnit===u?"true":"false");
+  b.title=unlocked?UNITS[u].desc:"继续通关战区解锁 "+UNITS[u].name;
  });
 }
 function renderOrgans(){
@@ -870,7 +877,7 @@ $("setting-health-bars").addEventListener("change",e=>{preferences.healthBars=e.
 $("setting-low-power").addEventListener("change",e=>{preferences.lowPower=e.target.checked;savePreferences();refreshCanvasResolution();toast(preferences.lowPower?"节能渲染已开启":"节能渲染已关闭");});
 document.querySelectorAll("[data-unit]").forEach(b=>b.addEventListener("click",()=>{
  const id=b.dataset.unit;
- if(id==="brute"&&meta.upgrades.capacity===0&&stage===0){toast("先升级一次扩张巢穴，解锁重尸。");return;}
+ if(!unitUnlocked(id)){toast("继续通关战区，才能解锁 "+UNITS[id].name+"。");return;}
  selectedUnit=id;document.querySelectorAll("[data-unit]").forEach(x=>x.classList.toggle("selected",x.dataset.unit===id));updateUI();showHelpHint();
 }));
 document.querySelectorAll("[data-difficulty]").forEach(b=>b.addEventListener("click",()=>selectDifficulty(b.dataset.difficulty)));
@@ -901,8 +908,8 @@ document.addEventListener("keydown",e=>{
   if($("management-drawer").classList.contains("open"))closeDrawer();
   if(pendingSkill){pendingSkill="";$("canvas-hint").textContent="选择单位，再点击地图部署；可再次点击「指挥」移动尸群";toast("已取消技能瞄准。");}
   if(commandMode){commandMode=false;updateUI();toast("已取消指挥模式。");}
- }else if(["1","2","3"].includes(e.key)){
-  const unit={1:"walker",2:"runner",3:"brute"}[e.key],button=document.querySelector('[data-unit="'+unit+'"]');
+ }else if(["1","2","3","4"].includes(e.key)){
+  const unit={1:"walker",2:"runner",3:"brute",4:"spitter"}[e.key],button=document.querySelector('[data-unit="'+unit+'"]');
   if(button&&!button.disabled)button.click();
  }else if(e.code==="Space"&&running&&!ended){e.preventDefault();$("pause-button").click();}
  else if(e.key.toLowerCase()==="f"&&running&&!ended){$("command-button").click();}
