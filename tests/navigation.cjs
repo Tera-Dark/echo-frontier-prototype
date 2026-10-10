@@ -9,6 +9,9 @@ const start={x:34,y:95},goal={x:224,y:96};
 assert.equal(nav.rayBlocked(start.x,start.y,goal.x,goal.y),true,"Direct line through the building must be blocked");
 const route=nav.findPath(start.x,start.y,goal.x,goal.y);
 assert.ok(route.length>=2,"Route must navigate around the building rather than through it");
+assert.ok(nav.cacheSize()>=1,"Long routes should use a bounded shared A-star cache");
+const sameRoute=nav.findPath(start.x+1,start.y+1,goal.x-1,goal.y-1);
+assert.ok(sameRoute.length>=1&&nav.cacheSize()<=320,"Nearby agents must reuse grid paths without unbounded cache growth");
 for(let i=0;i<route.length;i++){
  const prev=i?route[i-1]:start,next=route[i];
  assert.equal(nav.rayBlocked(prev.x,prev.y,next.x,next.y),false,"Every smoothed leg must respect entity clearance");
